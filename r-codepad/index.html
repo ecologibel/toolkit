@@ -144,7 +144,43 @@
   </div>
   <div id="editor-area">
   <div id="editor-wrap" class="t-night-owl">
-    <textarea id="editor"># Start here 
+    <textarea id="editor"># Eastern quoll habitat analysis
+# Mulligans Flat Woodland Sanctuary
+
+library(sf)
+library(terra)
+library(dplyr)
+library(ggplot2)
+
+# ---- Load data ----
+
+# Read sanctuary boundary
+mfws <- st_read(
+  file.path(gis_in, "mfws_boundary.gpkg"),
+  quiet = TRUE
+)
+
+# Read quoll trap locations
+traps <- read.csv(
+  file.path(raw_data, "quoll_traps_2024.csv")
+) |>
+  st_as_sf(
+    coords = c("longitude", "latitude"),
+    crs    = 4326
+  ) |>
+  st_transform(crs = 9473)
+
+# ---- Summarise capture data ----
+
+n_captures <- traps |>
+  filter(species == "eastern_quoll") |>
+  group_by(trap_id, sex) |>
+  summarise(
+    n       = n(),
+    .groups = "drop"
+  )
+
+print(n_captures)
 </textarea>
   </div>
   </div>
@@ -206,8 +242,43 @@
     currentTheme = e.target.value;
     wrap.classList.add(currentTheme);
     applyThemeChrome(currentTheme);
+    localStorage.setItem("r-editor-theme", currentTheme);
     editor.refresh();
   });
+
+  // Save content on every change
+  let restoring = false;
+  editor.on("change", () => {
+    if (!restoring) {
+      localStorage.setItem(
+        "r-editor-content", editor.getValue()
+      );
+    }
+  });
+
+  // Restore saved content and theme
+  const savedContent = localStorage.getItem(
+    "r-editor-content"
+  );
+  if (savedContent !== null) {
+    restoring = true;
+    editor.setValue(savedContent);
+    editor.clearHistory();
+    restoring = false;
+  }
+
+  const savedTheme = localStorage.getItem(
+    "r-editor-theme"
+  );
+  if (savedTheme && themeBgs[savedTheme]) {
+    wrap.classList.remove(currentTheme);
+    currentTheme = savedTheme;
+    wrap.classList.add(currentTheme);
+    applyThemeChrome(currentTheme);
+    document.getElementById("theme-select").value =
+      currentTheme;
+    editor.refresh();
+  }
 </script>
 </body>
 </html>

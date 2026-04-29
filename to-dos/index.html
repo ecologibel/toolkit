@@ -6,7 +6,12 @@
 <title>To do</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Segoe UI Light', 'Segoe UI',
+      -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 300;
+  }
 
   #app {
     display: flex;
@@ -22,12 +27,12 @@
     --fg-muted:   #6c7a89;
     --border:     #1e3a52;
     --accent:     #7fdbca;
-    --check:      #addb67;
+    --check:      #87DACA;
     --hover:      #012a3f;
     --sel-bg:     #012a3f;
     --sel-bdr:    #1e3a52;
     --sel-fg:     #d6deeb;
-    --today-bg:   #012a3f;
+    --today-bg:   #134957;
     --past-bg:    rgba(19, 85, 92, 0.25);
     --drag-bg:    rgba(127, 219, 202, 0.08);
   }
@@ -38,12 +43,12 @@
     --fg-muted:   #6a737d;
     --border:     #e1e4e8;
     --accent:     #0c969b;
-    --check:      #4876d6;
+    --check:      #87DACA;
     --hover:      #f1f8ff;
     --sel-bg:     #fff;
     --sel-bdr:    #d1d5da;
     --sel-fg:     #24292e;
-    --today-bg:   #f1f8ff;
+    --today-bg:   rgba(19, 73, 87, 0.1);
     --past-bg:    rgba(19, 85, 92, 0.08);
     --drag-bg:    rgba(12, 150, 155, 0.06);
   }
@@ -57,7 +62,7 @@
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    font-family: sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   #nav-controls {
     display: flex;
@@ -78,7 +83,7 @@
     font-size: 13px;
     padding: 3px 10px;
     border-radius: 4px;
-    font-family: sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   #toolbar button:hover {
     background: var(--hover);
@@ -87,7 +92,7 @@
   #nav-label {
     font-size: 13px;
     color: var(--fg);
-    font-weight: 500;
+    font-weight: 600;
     min-width: 140px;
     text-align: center;
   }
@@ -102,7 +107,7 @@
     padding: 4px 20px 4px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-family: sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     white-space: nowrap;
     position: relative;
   }
@@ -127,7 +132,7 @@
     z-index: 100;
     min-width: 100%;
     font-size: 12px;
-    font-family: sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   .dropdown.open .dropdown-menu { display: block; }
   .dropdown-item {
@@ -145,26 +150,80 @@
     overflow-y: auto;
     background: var(--bg);
   }
-  input[type="text"] {
+  textarea.task-input {
     background: transparent;
     border: none;
     color: var(--fg);
-    font-family: -apple-system, BlinkMacSystemFont,
-      'Segoe UI', sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI',
+      'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     outline: none;
     width: 100%;
+    resize: none;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    line-height: 1.4;
+    min-height: 1.4em;
+    field-sizing: content;
   }
-  input[type="text"]::placeholder {
+  textarea.task-input::placeholder {
     color: var(--fg-muted);
     opacity: 0.6;
   }
 
-  .size-s input[type="text"] { font-size: 12px; }
-  .size-s .day-tasks input[type="text"] { font-size: 11px; }
-  .size-m input[type="text"] { font-size: 14px; }
-  .size-m .day-tasks input[type="text"] { font-size: 13px; }
-  .size-l input[type="text"] { font-size: 17px; }
-  .size-l .day-tasks input[type="text"] { font-size: 15px; }
+  .task-text-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+  .task-text-wrap textarea.task-input {
+    position: relative;
+    z-index: 1;
+    color: transparent;
+    caret-color: var(--fg);
+  }
+  .task-highlight {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    pointer-events: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: hidden;
+    color: var(--fg);
+    z-index: 0;
+    line-height: 1.4;
+  }
+  .task.done .task-highlight {
+    text-decoration: line-through;
+    color: var(--fg-muted);
+  }
+  .t-dark .task.done .task-highlight {
+    color: #87DACA;
+  }
+  .task-highlight .date-token {
+    color: #87DACA;
+  }
+  .task.done .task-highlight .date-token {
+    color: var(--fg-muted);
+  }
+  .t-dark .task.done .task-highlight .date-token {
+    color: #87DACA;
+  }
+
+  .t-dark .task input[type="checkbox"] {
+    border-color: #87DACA;
+  }
+  .t-dark .task input[type="checkbox"]:checked {
+    border-color: var(--check);
+  }
+
+  .size-s textarea.task-input { font-size: 12px; }
+  .size-s .day-tasks textarea.task-input { font-size: 11px; }
+  .size-m textarea.task-input { font-size: 14px; }
+  .size-m .day-tasks textarea.task-input { font-size: 13px; }
+  .size-l textarea.task-input { font-size: 17px; }
+  .size-l .day-tasks textarea.task-input { font-size: 15px; }
 
   /* ---- Task ---- */
   .task {
@@ -174,6 +233,9 @@
     padding: 6px 0;
     transition: opacity 0.15s;
   }
+  .task.indent-1 { padding-left: 24px; }
+  .task.indent-2 { padding-left: 48px; }
+  .task.indent-3 { padding-left: 72px; }
   .task.dragging { opacity: 0.3; }
   .task.drag-over-above {
     border-top: 2px solid var(--accent);
@@ -183,21 +245,6 @@
     border-bottom: 2px solid var(--accent);
     padding-bottom: 4px;
   }
-
-  .drag-handle {
-    cursor: grab;
-    color: var(--fg-muted);
-    font-size: 11px;
-    padding: 2px 2px 0 0;
-    opacity: 0;
-    transition: opacity 0.15s;
-    user-select: none;
-    flex-shrink: 0;
-    line-height: 1;
-    margin-top: 3px;
-  }
-  .task:hover .drag-handle { opacity: 0.5; }
-  .drag-handle:hover { opacity: 1 !important; }
 
   .task input[type="checkbox"] {
     appearance: none;
@@ -224,9 +271,8 @@
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
-  .task.done input[type="text"] {
-    text-decoration: line-through;
-    color: var(--fg-muted);
+  .task.done textarea.task-input {
+    color: transparent;
   }
   .task .delete-btn {
     background: none; border: none;
@@ -252,11 +298,11 @@
     padding: 40px 24px;
   }
   .section-heading {
-    font-size: 13px; font-weight: 500;
+    font-size: 13px; font-weight: 600;
     color: var(--fg-muted);
     letter-spacing: 0.04em;
     margin-bottom: 16px;
-    font-family: sans-serif;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   /* ---- Toggle ---- */
@@ -268,18 +314,68 @@
   .toggle-section { margin-bottom: 32px; }
   .toggle-header {
     display: flex; align-items: center;
-    gap: 8px; cursor: pointer;
+    gap: 8px;
     margin-bottom: 12px; user-select: none;
   }
   .toggle-arrow {
     font-size: 10px; color: var(--fg-muted);
     transition: transform 0.15s;
     display: inline-block; width: 14px;
+    cursor: pointer; flex-shrink: 0;
   }
   .toggle-arrow.collapsed {
     transform: rotate(-90deg);
   }
   .toggle-tasks.collapsed { display: none; }
+  .toggle-name-input {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    font-family: 'Segoe UI Light', 'Segoe UI',
+      -apple-system, BlinkMacSystemFont, sans-serif;
+    outline: none;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+  }
+  .toggle-name-input:focus {
+    cursor: text;
+    color: var(--fg);
+  }
+  .toggle-delete-btn {
+    background: none; border: none;
+    color: var(--fg-muted);
+    cursor: pointer; font-size: 14px;
+    padding: 0 4px; opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .toggle-header:hover .toggle-delete-btn {
+    opacity: 0.4;
+  }
+  .toggle-delete-btn:hover {
+    opacity: 1 !important;
+  }
+  .add-section-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--fg-muted);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Segoe UI Light', 'Segoe UI',
+      -apple-system, BlinkMacSystemFont, sans-serif;
+    width: 100%;
+    text-align: center;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .add-section-btn:hover {
+    border-color: var(--fg-muted);
+    color: var(--fg);
+  }
 
   /* ---- Column grids ---- */
   .col-view {
@@ -298,6 +394,7 @@
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     min-width: 0;
+    cursor: pointer;
   }
   .day-col:last-child { border-right: none; }
   .day-col.today { background: var(--today-bg); }
@@ -305,21 +402,22 @@
   .day-header {
     padding: 12px 10px 8px;
     border-bottom: 1px solid var(--border);
-    font-family: sans-serif; flex-shrink: 0;
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; flex-shrink: 0;
   }
   .day-name {
-    font-size: 11px; font-weight: 500;
+    font-size: 11px; font-weight: 600;
     color: var(--fg-muted);
     letter-spacing: 0.04em;
   }
   .day-date {
-    font-size: 18px; font-weight: 500;
+    font-size: 18px; font-weight: 600;
     color: var(--fg); margin-top: 2px;
   }
   .day-col.today .day-name { color: var(--accent); }
   .day-col.today .day-date { color: var(--accent); }
   .day-tasks {
     flex: 1; overflow-y: auto; padding: 8px 10px;
+    cursor: pointer;
   }
 
   #month-view .day-header { padding: 8px 8px 6px; }
@@ -336,9 +434,6 @@
   #month-view .task input[type="checkbox"]:checked::after {
     left: 3px; top: 0; width: 4px; height: 8px;
   }
-  #month-view .drag-handle {
-    font-size: 9px; margin-top: 2px;
-  }
   .day-col.other-month { opacity: 0.35; }
 
   /* ---- Year ---- */
@@ -347,46 +442,45 @@
     padding: 24px 24px 60px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
+    gap: 12px;
   }
   .year-month-card {
     border: 1px solid var(--border);
-    border-radius: 6px; overflow: hidden;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    max-height: 360px;
   }
-  .year-month-title {
-    font-size: 12px; font-weight: 500;
-    color: var(--fg); padding: 8px 10px;
-    border-bottom: 1px solid var(--border);
-    font-family: sans-serif;
-  }
-  .year-month-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    font-family: sans-serif;
-  }
-  .year-day-name {
-    font-size: 9px; color: var(--fg-muted);
-    text-align: center; padding: 4px 0 2px;
-  }
-  .year-day {
-    font-size: 10px; text-align: center;
-    padding: 3px 0; color: var(--fg-muted);
-    cursor: default;
-  }
-  .year-day.in-month { color: var(--fg); }
-  .year-day.today-marker {
-    color: var(--accent); font-weight: 500;
-  }
-  .year-day.past-marker {
+  .year-month-card.past-month {
     background: var(--past-bg);
   }
-  .year-day.has-tasks { position: relative; }
-  .year-day.has-tasks::after {
-    content: ''; display: block;
-    width: 4px; height: 4px;
-    border-radius: 50%;
-    background: var(--accent);
-    margin: 1px auto 0;
+  .year-month-card.current-month {
+    background: var(--today-bg);
+  }
+  .year-month-title {
+    font-size: 12px; font-weight: 600;
+    color: var(--fg); padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    flex-shrink: 0;
+  }
+  .year-month-card.current-month .year-month-title {
+    color: var(--accent);
+  }
+  .year-month-tasks {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .year-month-tasks .task { padding: 3px 0; gap: 6px; }
+  .year-month-tasks .task input[type="checkbox"] {
+    width: 14px; height: 14px; min-width: 14px;
+  }
+  .year-month-tasks .task
+    input[type="checkbox"]:checked::after {
+    left: 3px; top: 0; width: 4px; height: 8px;
   }
 
   .hidden { display: none !important; }
@@ -403,14 +497,14 @@
     </div>
     <div id="dropdown-controls">
       <div class="dropdown" id="dd-style">
-        <div class="dropdown-btn">Style</div>
+        <div class="dropdown-btn">View</div>
         <div class="dropdown-menu">
-          <div class="dropdown-item active"
-            data-value="weekly">Week</div>
           <div class="dropdown-item"
             data-value="simple">Simple</div>
           <div class="dropdown-item"
             data-value="toggle">Toggle</div>
+          <div class="dropdown-item active"
+            data-value="weekly">Week</div>
           <div class="dropdown-item"
             data-value="month">Month</div>
           <div class="dropdown-item"
@@ -442,35 +536,11 @@
 
   <div id="content">
     <div id="simple-view" class="hidden">
-      <h2 class="section-heading">To do</h2>
       <div id="simple-tasks" class="drop-zone"
         data-list="simple"></div>
     </div>
 
-    <div id="toggle-view" class="hidden">
-      <div class="toggle-section">
-        <div class="toggle-header"
-          data-section="today">
-          <span class="toggle-arrow">&#9660;</span>
-          <h2 class="section-heading"
-            style="margin-bottom:0">Today</h2>
-        </div>
-        <div class="toggle-tasks drop-zone"
-          id="toggle-today"
-          data-list="toggle-today"></div>
-      </div>
-      <div class="toggle-section">
-        <div class="toggle-header"
-          data-section="later">
-          <span class="toggle-arrow">&#9660;</span>
-          <h2 class="section-heading"
-            style="margin-bottom:0">Later</h2>
-        </div>
-        <div class="toggle-tasks drop-zone"
-          id="toggle-later"
-          data-list="toggle-later"></div>
-      </div>
-    </div>
+    <div id="toggle-view" class="hidden"></div>
 
     <div id="weekly-view"
       class="col-view hidden"></div>
@@ -489,6 +559,7 @@
   const MONTH_KEY   = "todo-month-offset";
   const YEAR_KEY    = "todo-year-offset";
   const TOGGLE_KEY  = "todo-toggle-state";
+  const TOGGLE_SEC  = "todo-toggle-sections";
 
   const app      = document.getElementById("app");
   const navCtrl  = document.getElementById("nav-controls");
@@ -568,19 +639,33 @@
   // ---- Data ----
 
   function loadData() {
+    let data;
     try {
-      return JSON.parse(
+      data = JSON.parse(
         localStorage.getItem(STORAGE_KEY)
       ) || {
         simple: [], weekly: {},
-        toggle: { today: [], later: [] }
+        toggleData: {}
       };
     } catch {
-      return {
+      data = {
         simple: [], weekly: {},
-        toggle: { today: [], later: [] }
+        toggleData: {}
       };
     }
+    // Migrate old toggle format
+    if (data.toggle && !data.toggleData) {
+      data.toggleData = {};
+      if (data.toggle.today) {
+        data.toggleData.today = data.toggle.today;
+      }
+      if (data.toggle.later) {
+        data.toggleData.later = data.toggle.later;
+      }
+      delete data.toggle;
+    }
+    if (!data.toggleData) data.toggleData = {};
+    return data;
   }
 
   function saveData(data) {
@@ -589,22 +674,36 @@
     );
   }
 
+  // Toggle sections
+  function loadToggleSections() {
+    try {
+      const s = JSON.parse(
+        localStorage.getItem(TOGGLE_SEC)
+      );
+      if (Array.isArray(s) && s.length) return s;
+    } catch {}
+    return [
+      { id: "today", name: "Today" },
+      { id: "later", name: "Later" }
+    ];
+  }
+
+  function saveToggleSections(sections) {
+    localStorage.setItem(
+      TOGGLE_SEC, JSON.stringify(sections)
+    );
+  }
+
   // Get array ref by list key
   function getList(data, listKey) {
     if (listKey === "simple") return data.simple;
-    if (listKey === "toggle-today") {
-      if (!data.toggle) {
-        data.toggle = { today: [], later: [] };
+    if (listKey.startsWith("toggle-")) {
+      const secId = listKey.slice(7);
+      if (!data.toggleData[secId]) {
+        data.toggleData[secId] = [];
       }
-      return data.toggle.today;
+      return data.toggleData[secId];
     }
-    if (listKey === "toggle-later") {
-      if (!data.toggle) {
-        data.toggle = { today: [], later: [] };
-      }
-      return data.toggle.later;
-    }
-    // weekly/month keys (date strings or _later)
     if (!data.weekly[listKey]) {
       data.weekly[listKey] = [];
     }
@@ -615,16 +714,10 @@
   function setList(data, listKey, arr) {
     if (listKey === "simple") {
       data.simple = arr;
-    } else if (listKey === "toggle-today") {
-      if (!data.toggle) {
-        data.toggle = { today: [], later: [] };
-      }
-      data.toggle.today = arr;
-    } else if (listKey === "toggle-later") {
-      if (!data.toggle) {
-        data.toggle = { today: [], later: [] };
-      }
-      data.toggle.later = arr;
+    } else if (listKey.startsWith("toggle-")) {
+      const secId = listKey.slice(7);
+      if (!data.toggleData) data.toggleData = {};
+      data.toggleData[secId] = arr;
     } else {
       data.weekly[listKey] = arr;
     }
@@ -817,6 +910,53 @@
     renderCurrentView();
   }
 
+  // ---- Date highlighting ----
+
+  const DATE_PATTERN = new RegExp(
+    '@('
+    // Relative: @today, @tomorrow, @yesterday
+    + 'today|tomorrow|yesterday'
+    // Day names: @monday, @next tuesday
+    + '|(?:next\\s+)?(?:mon(?:day)?|tue(?:sday)?'
+    + '|wed(?:nesday)?|thu(?:rsday)?'
+    + '|fri(?:day)?|sat(?:urday)?|sun(?:day)?)'
+    // Month DD, YYYY or Month DD
+    + '|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?'
+    + '|apr(?:il)?|may|jun(?:e)?|jul(?:y)?'
+    + '|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?'
+    + '|nov(?:ember)?|dec(?:ember)?)'
+    + '\\s+\\d{1,2}(?:,?\\s*\\d{4})?'
+    // DD/MM/YYYY or DD-MM-YYYY
+    + '|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}'
+    + ')',
+    'gi'
+  );
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function highlightDates(text) {
+    if (!text) return "";
+    let result = "";
+    let lastIdx = 0;
+    let match;
+    DATE_PATTERN.lastIndex = 0;
+    while ((match = DATE_PATTERN.exec(text))) {
+      result += escapeHtml(
+        text.slice(lastIdx, match.index)
+      );
+      result += '<span class="date-token">'
+        + escapeHtml(match[0]) + '</span>';
+      lastIdx = match.index + match[0].length;
+    }
+    result += escapeHtml(text.slice(lastIdx));
+    return result;
+  }
+
   // ---- Task element ----
 
   function createTaskEl(
@@ -824,10 +964,12 @@
   ) {
     opts = opts || {};
     const div = document.createElement("div");
+    const indent = task.indent || 0;
     div.className = "task"
-      + (task.done ? " done" : "");
+      + (task.done ? " done" : "")
+      + (indent > 0 ? " indent-" + indent : "");
 
-    // Only show drag handle for non-empty tasks
+    // Drag from checkbox for non-empty tasks
     if (task.text !== "" && opts.listKey) {
       div.addEventListener("dragend", handleDragEnd);
       div.addEventListener("dragover", e =>
@@ -840,13 +982,16 @@
           ? opts.index : opts.index + 1;
         handleDrop(e, opts.listKey, dropIdx);
       });
+    }
 
-      const grip = document.createElement("span");
-      grip.className = "drag-handle";
-      grip.textContent = "\u2847";
-      grip.draggable = true;
-      grip.addEventListener("dragstart", e => {
-        // Transfer drag to the parent task row
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = task.done;
+
+    if (task.text !== "" && opts.listKey) {
+      cb.draggable = true;
+      cb.style.cursor = "grab";
+      cb.addEventListener("dragstart", e => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", "");
         e.dataTransfer.setDragImage(div, 20, 12);
@@ -856,36 +1001,62 @@
         };
         div.classList.add("dragging");
       });
-      div.appendChild(grip);
-    } else {
-      // Spacer for alignment
-      const spacer = document.createElement("span");
-      spacer.className = "drag-handle";
-      spacer.style.visibility = "hidden";
-      spacer.textContent = "\u2847";
-      div.appendChild(spacer);
     }
 
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = task.done;
     cb.addEventListener("change", () => {
       task.done = cb.checked;
       div.classList.toggle("done", task.done);
       onUpdate();
     });
 
-    const txt = document.createElement("input");
-    txt.type = "text";
+    const txt = document.createElement("textarea");
+    txt.className = "task-input";
+    txt.rows = 1;
     txt.value = task.text;
     if (!opts.noPlaceholder) {
       txt.placeholder = "New task...";
     }
-    txt.addEventListener("input", () => {
-      task.text = txt.value;
-      onUpdate();
-    });
     txt.addEventListener("keydown", e => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Outdent
+          task.indent = Math.max(
+            0, (task.indent || 0) - 1
+          );
+        } else {
+          // Indent (max 3 levels)
+          task.indent = Math.min(
+            3, (task.indent || 0) + 1
+          );
+        }
+        onUpdate();
+        renderCurrentView();
+        // Refocus same task after re-render
+        setTimeout(() => {
+          let container = null;
+          const cid = div.parentElement
+            ? div.parentElement.id
+              || div.parentElement.dataset.list
+            : null;
+          if (cid) {
+            container =
+              document.getElementById(cid)
+              || document.querySelector(
+                '[data-list="' + cid + '"]'
+              );
+          }
+          if (container && opts.index !== undefined) {
+            const inputs = container.querySelectorAll(
+              ".task textarea.task-input"
+            );
+            if (inputs[opts.index]) {
+              inputs[opts.index].focus();
+            }
+          }
+        }, 10);
+        return;
+      }
       if (e.key === "Enter") {
         e.preventDefault();
         const containerId =
@@ -912,7 +1083,7 @@
           }
           if (container) {
             const inputs = container.querySelectorAll(
-              ".task input[type='text']"
+              ".task textarea.task-input"
             );
             if (inputs.length) {
               inputs[inputs.length - 1].focus();
@@ -934,8 +1105,43 @@
     del.addEventListener("click",
       () => onDelete(task));
 
+    // Text wrapper with highlight overlay
+    const wrap = document.createElement("div");
+    wrap.className = "task-text-wrap";
+
+    const highlight = document.createElement("div");
+    highlight.className = "task-highlight";
+
+    function syncHighlight() {
+      highlight.innerHTML = highlightDates(txt.value);
+      const cs = getComputedStyle(txt);
+      highlight.style.font = cs.font;
+      highlight.style.padding = cs.padding;
+      highlight.style.lineHeight = cs.lineHeight;
+    }
+
+    function autoResize() {
+      txt.style.height = "auto";
+      txt.style.height = txt.scrollHeight + "px";
+    }
+
+    txt.addEventListener("input", () => {
+      task.text = txt.value;
+      autoResize();
+      syncHighlight();
+      onUpdate();
+    });
+
+    wrap.appendChild(highlight);
+    wrap.appendChild(txt);
+    // Initial sync after DOM attach
+    setTimeout(() => {
+      autoResize();
+      syncHighlight();
+    }, 0);
+
     div.appendChild(cb);
-    div.appendChild(txt);
+    div.appendChild(wrap);
     div.appendChild(del);
     return div;
   }
@@ -943,7 +1149,7 @@
   function ensureEmpty(arr) {
     if (!arr.length
       || arr[arr.length - 1].text !== "") {
-      arr.push({ text: "", done: false });
+      arr.push({ text: "", done: false, indent: 0 });
     }
   }
 
@@ -954,6 +1160,41 @@
       handleZoneDragLeave);
     el.addEventListener("drop",
       e => handleZoneDrop(e, listKey));
+  }
+
+  function setupClickToAdd(
+    clickEl, tasksEl, data, listKey, renderFn
+  ) {
+    clickEl.addEventListener("click", e => {
+      if (e.target.closest(
+        ".task, .delete-btn, button"
+      )) return;
+      const list = getList(data, listKey);
+      if (list.length
+        && list[list.length - 1].text === "") {
+        const inputs = tasksEl.querySelectorAll(
+          ".task textarea.task-input"
+        );
+        if (inputs.length) {
+          inputs[inputs.length - 1].focus();
+        }
+        return;
+      }
+      list.push({
+        text: "", done: false, indent: 0
+      });
+      setList(data, listKey, list);
+      saveData(data);
+      renderFn();
+      setTimeout(() => {
+        const inputs = tasksEl.querySelectorAll(
+          ".task textarea.task-input"
+        );
+        if (inputs.length) {
+          inputs[inputs.length - 1].focus();
+        }
+      }, 10);
+    });
   }
 
   // ---- Simple ----
@@ -988,10 +1229,8 @@
     try {
       return JSON.parse(
         localStorage.getItem(TOGGLE_KEY)
-      ) || { today: true, later: true };
-    } catch {
-      return { today: true, later: true };
-    }
+      ) || {};
+    } catch { return {}; }
   }
 
   function saveToggleState(st) {
@@ -1002,46 +1241,89 @@
 
   function renderToggle() {
     const data = loadData();
-    if (!data.toggle) {
-      data.toggle = { today: [], later: [] };
-    }
+    const sections = loadToggleSections();
     const tState = loadToggleState();
+    const el = document.getElementById("toggle-view");
+    el.innerHTML = "";
 
-    ["today", "later"].forEach(section => {
-      const listKey = "toggle-" + section;
-      const el = document.getElementById(
-        "toggle-" + section
-      );
-      el.innerHTML = "";
-
-      if (!data.toggle[section]) {
-        data.toggle[section] = [];
+    sections.forEach(sec => {
+      const listKey = "toggle-" + sec.id;
+      if (!data.toggleData[sec.id]) {
+        data.toggleData[sec.id] = [];
       }
-      ensureEmpty(data.toggle[section]);
+      ensureEmpty(data.toggleData[sec.id]);
 
-      const header = document.querySelector(
-        '.toggle-header[data-section="'
-        + section + '"]'
-      );
-      const arrow = header.querySelector(
-        ".toggle-arrow"
-      );
+      const sectionDiv = document.createElement("div");
+      sectionDiv.className = "toggle-section";
 
-      if (tState[section]) {
-        el.classList.remove("collapsed");
-        arrow.classList.remove("collapsed");
-      } else {
-        el.classList.add("collapsed");
-        arrow.classList.add("collapsed");
+      // Header
+      const header = document.createElement("div");
+      header.className = "toggle-header";
+
+      const isOpen = tState[sec.id] !== false;
+
+      const arrow = document.createElement("span");
+      arrow.className = "toggle-arrow"
+        + (isOpen ? "" : " collapsed");
+      arrow.textContent = "\u25BC";
+      arrow.addEventListener("click", e => {
+        e.stopPropagation();
+        const st = loadToggleState();
+        st[sec.id] = !(st[sec.id] !== false);
+        saveToggleState(st);
+        renderToggle();
+      });
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.className = "toggle-name-input";
+      nameInput.value = sec.name;
+      nameInput.addEventListener("input", () => {
+        sec.name = nameInput.value;
+        saveToggleSections(sections);
+      });
+      nameInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          nameInput.blur();
+        }
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "toggle-delete-btn";
+      delBtn.textContent = "\u00d7";
+      delBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        if (sections.length <= 1) return;
+        const newSections = sections.filter(
+          s => s.id !== sec.id
+        );
+        saveToggleSections(newSections);
+        delete data.toggleData[sec.id];
+        saveData(data);
+        renderToggle();
+      });
+
+      header.appendChild(arrow);
+      header.appendChild(nameInput);
+      if (sections.length > 1) {
+        header.appendChild(delBtn);
       }
 
-      data.toggle[section].forEach((task, i) => {
-        el.appendChild(createTaskEl(
+      // Tasks
+      const tasksDiv = document.createElement("div");
+      tasksDiv.className = "toggle-tasks drop-zone"
+        + (isOpen ? "" : " collapsed");
+      tasksDiv.dataset.list = listKey;
+      tasksDiv.id = "toggle-" + sec.id;
+
+      data.toggleData[sec.id].forEach((task, i) => {
+        tasksDiv.appendChild(createTaskEl(
           task,
           () => saveData(data),
           t => {
-            data.toggle[section] =
-              data.toggle[section]
+            data.toggleData[sec.id] =
+              data.toggleData[sec.id]
                 .filter(x => x !== t);
             saveData(data);
             renderToggle();
@@ -1050,21 +1332,41 @@
         ));
       });
 
-      setupDropZone(el, listKey);
+      setupDropZone(tasksDiv, listKey);
+
+      sectionDiv.appendChild(header);
+      sectionDiv.appendChild(tasksDiv);
+      el.appendChild(sectionDiv);
     });
 
-    saveData(data);
-
-    document.querySelectorAll(".toggle-header")
-      .forEach(h => {
-        h.onclick = () => {
-          const s = h.dataset.section;
-          const st = loadToggleState();
-          st[s] = !st[s];
-          saveToggleState(st);
-          renderToggle();
-        };
+    // Add section button
+    const addBtn = document.createElement("button");
+    addBtn.className = "add-section-btn";
+    addBtn.textContent = "+ Add section";
+    addBtn.addEventListener("click", () => {
+      const newId = "sec_" + Date.now();
+      sections.push({
+        id: newId, name: "New section"
       });
+      saveToggleSections(sections);
+      data.toggleData[newId] = [];
+      saveData(data);
+      renderToggle();
+      // Focus the new section's name input
+      setTimeout(() => {
+        const inputs = el.querySelectorAll(
+          ".toggle-name-input"
+        );
+        if (inputs.length) {
+          const last = inputs[inputs.length - 1];
+          last.focus();
+          last.select();
+        }
+      }, 10);
+    });
+    el.appendChild(addBtn);
+
+    saveData(data);
   }
 
   // ---- Week ----
@@ -1089,7 +1391,6 @@
       date.setDate(monday.getDate() + i);
       const key = dateKey(date);
       if (!data.weekly[key]) data.weekly[key] = [];
-      ensureEmpty(data.weekly[key]);
 
       let cls = "day-col";
       if (isToday(date))     cls += " today";
@@ -1110,7 +1411,10 @@
       tasks.className = "day-tasks drop-zone";
       tasks.dataset.list = key;
 
-      data.weekly[key].forEach((task, ti) => {
+      // Only render tasks with content
+      data.weekly[key].filter(
+        t => t.text !== ""
+      ).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
           () => saveData(data),
@@ -1129,13 +1433,15 @@
 
       col.appendChild(header);
       col.appendChild(tasks);
+      setupClickToAdd(
+        col, tasks, data, key, renderWeekly
+      );
       el.appendChild(col);
     }
 
     // Later
     const lk = "_later";
     if (!data.weekly[lk]) data.weekly[lk] = [];
-    ensureEmpty(data.weekly[lk]);
 
     const laterCol = document.createElement("div");
     laterCol.className = "day-col";
@@ -1149,7 +1455,9 @@
     laterT.className = "day-tasks drop-zone";
     laterT.dataset.list = lk;
 
-    data.weekly[lk].forEach((task, ti) => {
+    data.weekly[lk].filter(
+      t => t.text !== ""
+    ).forEach((task, ti) => {
       laterT.appendChild(createTaskEl(
         task,
         () => saveData(data),
@@ -1168,6 +1476,9 @@
 
     laterCol.appendChild(laterH);
     laterCol.appendChild(laterT);
+    setupClickToAdd(
+      laterCol, laterT, data, lk, renderWeekly
+    );
     el.appendChild(laterCol);
 
     saveData(data);
@@ -1192,6 +1503,28 @@
       "en-AU", { month: "long", year: "numeric" }
     );
 
+    // Calculate number of week rows first
+    const startDay = first.getDay();
+    const startOff = startDay === 0
+      ? -6 : 1 - startDay;
+    const gridStart = new Date(first);
+    gridStart.setDate(first.getDate() + startOff);
+    const thisMonth = first.getMonth();
+
+    let totalDays = 0;
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const inM = d.getMonth() === thisMonth;
+      if (!inM && i >= 35) break;
+      if (!inM && i > 7 && d.getDay() === 1) break;
+      totalDays++;
+    }
+    const weekRows = Math.ceil(totalDays / 7);
+    el.style.gridTemplateRows =
+      "auto " + ("1fr ".repeat(weekRows)).trim();
+
+    // Day name headers
     DAY_NAMES.forEach(name => {
       const hdr = document.createElement("div");
       hdr.className = "day-col";
@@ -1204,25 +1537,14 @@
       el.appendChild(hdr);
     });
 
-    const startDay = first.getDay();
-    const startOff = startDay === 0
-      ? -6 : 1 - startDay;
-    const gridStart = new Date(first);
-    gridStart.setDate(first.getDate() + startOff);
-
-    const thisMonth = first.getMonth();
-    for (let i = 0; i < 42; i++) {
+    // Day cells
+    for (let i = 0; i < totalDays; i++) {
       const date = new Date(gridStart);
       date.setDate(gridStart.getDate() + i);
       const key = dateKey(date);
       const inMonth = date.getMonth() === thisMonth;
 
-      if (!inMonth && i >= 35) break;
-      if (!inMonth && i > 7
-        && date.getDay() === 1) break;
-
       if (!data.weekly[key]) data.weekly[key] = [];
-      ensureEmpty(data.weekly[key]);
 
       let cls = "day-col";
       if (!inMonth)            cls += " other-month";
@@ -1243,7 +1565,9 @@
       tasks.className = "day-tasks drop-zone";
       tasks.dataset.list = key;
 
-      data.weekly[key].forEach((task, ti) => {
+      data.weekly[key].filter(
+        t => t.text !== ""
+      ).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
           () => saveData(data),
@@ -1262,6 +1586,9 @@
 
       col.appendChild(header);
       col.appendChild(tasks);
+      setupClickToAdd(
+        col, tasks, data, key, renderMonth
+      );
       el.appendChild(col);
     }
 
@@ -1279,64 +1606,66 @@
     const yr = now.getFullYear() + yearOffset;
     navLabel.textContent = String(yr);
 
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
     for (let m = 0; m < 12; m++) {
+      const listKey = "_ym-" + yr + "-"
+        + String(m).padStart(2, "0");
+      if (!data.weekly[listKey]) {
+        data.weekly[listKey] = [];
+      }
+
       const card = document.createElement("div");
-      card.className = "year-month-card";
+      let cls = "year-month-card";
+      if (yr === currentYear && m === currentMonth) {
+        cls += " current-month";
+      } else if (
+        yr < currentYear
+        || (yr === currentYear && m < currentMonth)
+      ) {
+        cls += " past-month";
+      }
+      card.className = cls;
 
       const title = document.createElement("div");
       title.className = "year-month-title";
       title.textContent = MONTH_NAMES[m];
       card.appendChild(title);
 
-      const grid = document.createElement("div");
-      grid.className = "year-month-grid";
+      const tasks = document.createElement("div");
+      tasks.className =
+        "year-month-tasks drop-zone";
+      tasks.dataset.list = listKey;
 
-      ["M","T","W","T","F","S","S"].forEach(n => {
-        const cell = document.createElement("div");
-        cell.className = "year-day-name";
-        cell.textContent = n;
-        grid.appendChild(cell);
+      data.weekly[listKey].filter(
+        t => t.text !== ""
+      ).forEach((task, ti) => {
+        tasks.appendChild(createTaskEl(
+          task,
+          () => saveData(data),
+          t => {
+            data.weekly[listKey] =
+              data.weekly[listKey]
+                .filter(x => x !== t);
+            saveData(data);
+            renderYear();
+          },
+          { noPlaceholder: true,
+            listKey: listKey, index: ti }
+        ));
       });
 
-      const first = new Date(yr, m, 1);
-      const startDay = first.getDay();
-      const startOff = startDay === 0
-        ? -6 : 1 - startDay;
-      const gridStart = new Date(first);
-      gridStart.setDate(first.getDate() + startOff);
+      setupDropZone(tasks, listKey);
 
-      for (let i = 0; i < 42; i++) {
-        const date = new Date(gridStart);
-        date.setDate(gridStart.getDate() + i);
-        const inMonth = date.getMonth() === m;
-        const key = dateKey(date);
-
-        const hasTasks = data.weekly[key]
-          && data.weekly[key].some(
-            t => t.text !== ""
-          );
-
-        const cell = document.createElement("div");
-        let cls = "year-day";
-        if (inMonth) {
-          cls += " in-month";
-          if (isToday(date)) {
-            cls += " today-marker";
-          } else if (isPast(date)) {
-            cls += " past-marker";
-          }
-          if (hasTasks) cls += " has-tasks";
-        }
-        cell.className = cls;
-        cell.textContent = inMonth
-          ? date.getDate() : "";
-
-        grid.appendChild(cell);
-      }
-
-      card.appendChild(grid);
+      card.appendChild(tasks);
+      setupClickToAdd(
+        card, tasks, data, listKey, renderYear
+      );
       el.appendChild(card);
     }
+
+    saveData(data);
   }
 
   // ---- Views ----
