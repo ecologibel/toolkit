@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R Editor</title>
+<link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+  :root {
+    --no-bg:         #011627;
+    --no-fg:         #d6deeb;
+    --no-gutbg:      #011627;
+    --no-gutfg:      #6c7a89;
+    --no-activeline: #010e17;
+    --no-selection:  rgba(95, 126, 151, 0.47);
+    --no-cursor:     #80a4c2;
+    --no-keyword:    #c792ea;
+    --no-operator:   #7fdbca;
+    --no-number:     #82aaff;
+    --no-string:     #addb67;
+    --no-comment:    #637777;
+    --no-function:   #82aaff;
+    --no-variable:   #ff5874;
+    --no-constant:   #f78c6c;
+    --no-bracket:    rgba(128, 128, 128, 0.5);
+    --toolbar-bg:    #01111f;
+    --toolbar-bdr:   #1e3a52;
+    --sel-bg:        #012a3f;
+    --sel-bdr:       #1e3a52;
+    --sel-fg:        #d6deeb;
+    --font-mono: 'JetBrains Mono', 'Fira Mono', 'Cascadia Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--no-bg);
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ---- Toolbar ---- */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 7px 14px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--toolbar-bdr);
+    flex-shrink: 0;
+  }
+
+  #theme-select {
+    background: var(--sel-bg);
+    border: 1px solid var(--sel-bdr);
+    color: var(--sel-fg);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+    font-family: sans-serif;
+  }
+
+  #theme-select:focus { border-color: var(--no-operator); }
+
+  /* ---- Editor ---- */
+  #editor-area {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    background: var(--no-gutbg);
+    transition: background 0.15s;
+  }
+
+  #editor-wrap {
+    width: 100%;
+    max-width: 780px;
+    height: 100%;
+  }
+
+  .CodeMirror {
+    height: 100% !important;
+    font-family: var(--font-mono) !important;
+    font-size: 14px;
+    line-height: 1.6 !important;
+  }
+
+  .CodeMirror-scroll { height: 100% !important; }
+
+  /* ---- Night Owl (CCL) ---- */
+  .t-night-owl .CodeMirror { background: var(--no-bg) !important; color: var(--no-fg) !important; }
+  .t-night-owl .CodeMirror-gutters { background: var(--no-gutbg) !important; border-right: 1px solid #1e3a52 !important; }
+  .t-night-owl .CodeMirror-linenumber { color: var(--no-gutfg) !important; }
+  .t-night-owl .CodeMirror-cursor { border-left: 2px solid var(--no-cursor) !important; }
+  .t-night-owl .CodeMirror-selected { background: var(--no-selection) !important; }
+  .t-night-owl .CodeMirror-activeline-background { background: var(--no-activeline) !important; }
+  .t-night-owl .cm-keyword    { color: var(--no-keyword)  !important; }
+  .t-night-owl .cm-operator   { color: var(--no-operator) !important; }
+  .t-night-owl .cm-number     { color: var(--no-number)   !important; }
+  .t-night-owl .cm-string     { color: var(--no-string)   !important; }
+  .t-night-owl .cm-comment    { color: var(--no-comment)  !important; font-style: italic; }
+  .t-night-owl .cm-def        { color: var(--no-function) !important; }
+  .t-night-owl .cm-variable   { color: var(--no-fg)       !important; }
+  .t-night-owl .cm-variable-2 { color: var(--no-variable) !important; }
+  .t-night-owl .cm-atom       { color: var(--no-constant) !important; }
+  .t-night-owl .cm-builtin    { color: var(--no-function) !important; }
+  .t-night-owl .cm-bracket    { background: var(--no-bracket) !important; }
+
+  /* ---- Light ---- */
+  .t-github .CodeMirror { background: #fff !important; color: #24292e !important; }
+  .t-github .CodeMirror-gutters { background: #f6f8fa !important; border-right: 1px solid #e1e4e8 !important; }
+  .t-github .CodeMirror-linenumber { color: #babbbd !important; }
+  .t-github .CodeMirror-cursor { border-left: 2px solid #24292e !important; }
+  .t-github .CodeMirror-selected { background: #c8d3fa !important; }
+  .t-github .CodeMirror-activeline-background { background: #f1f8ff !important; }
+  .t-github .cm-keyword    { color: #d73a49 !important; }
+  .t-github .cm-operator   { color: #24292e !important; }
+  .t-github .cm-number     { color: #005cc5 !important; }
+  .t-github .cm-string     { color: #032f62 !important; }
+  .t-github .cm-comment    { color: #6a737d !important; font-style: italic; }
+  .t-github .cm-def        { color: #6f42c1 !important; }
+  .t-github .cm-variable   { color: #24292e !important; }
+  .t-github .cm-variable-2 { color: #e36209 !important; }
+  .t-github .cm-atom       { color: #005cc5 !important; }
+  .t-github .cm-builtin    { color: #6f42c1 !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <select id="theme-select">
+      <option value="t-night-owl" selected>Dark</option>
+      <option value="t-github">Light</option>
+    </select>
+  </div>
+  <div id="editor-area">
+  <div id="editor-wrap" class="t-night-owl">
+    <textarea id="editor"># Eastern quoll habitat analysis
+# Mulligans Flat Woodland Sanctuary
+
+library(sf)
+library(terra)
+library(dplyr)
+library(ggplot2)
+
+# ---- Load data ----
+
+# Read sanctuary boundary
+mfws <- st_read(
+  file.path(gis_in, "mfws_boundary.gpkg"),
+  quiet = TRUE
+)
+
+# Read quoll trap locations
+traps <- read.csv(
+  file.path(raw_data, "quoll_traps_2024.csv")
+) |>
+  st_as_sf(
+    coords = c("longitude", "latitude"),
+    crs    = 4326
+  ) |>
+  st_transform(crs = 9473)
+
+# ---- Summarise capture data ----
+
+n_captures <- traps |>
+  filter(species == "eastern_quoll") |>
+  group_by(trap_id, sex) |>
+  summarise(
+    n       = n(),
+    .groups = "drop"
+  )
+
+print(n_captures)
+</textarea>
+  </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/r/r.min.js"></script>
+<script>
+  const wrap = document.getElementById("editor-wrap");
+  const area = document.getElementById("editor-area");
+  const toolbar = document.getElementById("toolbar");
+
+  const themeBgs = {
+    "t-night-owl": { gutter: "#011627", toolbar: "#01111f", border: "#1e3a52",
+                     selBg: "#012a3f", selBdr: "#1e3a52", selFg: "#d6deeb" },
+    "t-github":    { gutter: "#f6f8fa", toolbar: "#f0f0f0", border: "#e1e4e8",
+                     selBg: "#fff",    selBdr: "#d1d5da", selFg: "#24292e" }
+  };
+
+  const editor = CodeMirror.fromTextArea(
+    document.getElementById("editor"),
+    {
+      autofocus:       true,
+      indentUnit:      2,
+      indentWithTabs:  false,
+      lineNumbers:     true,
+      lineWrapping:    false,
+      matchBrackets:   true,
+      mode:            "r",
+      styleActiveLine: true,
+      tabSize:         2,
+      extraKeys: {
+        "Tab":       cm => cm.execCommand("indentMore"),
+        "Shift-Tab": cm => cm.execCommand("indentLess")
+      }
+    }
+  );
+
+  editor.setSize("100%", "100%");
+
+  let currentTheme = "t-night-owl";
+
+  function applyThemeChrome(themeKey) {
+    const t = themeBgs[themeKey];
+    area.style.background       = t.gutter;
+    document.body.style.background = t.gutter;
+    toolbar.style.background    = t.toolbar;
+    toolbar.style.borderColor   = t.border;
+    const sel = document.getElementById("theme-select");
+    sel.style.background   = t.selBg;
+    sel.style.borderColor  = t.selBdr;
+    sel.style.color        = t.selFg;
+  }
+
+  applyThemeChrome("t-night-owl");
+
+  document.getElementById("theme-select").addEventListener("change", e => {
+    wrap.classList.remove(currentTheme);
+    currentTheme = e.target.value;
+    wrap.classList.add(currentTheme);
+    applyThemeChrome(currentTheme);
+    editor.refresh();
+  });
+</script>
+</body>
+</html>
