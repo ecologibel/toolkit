@@ -1,4 +1,20 @@
+# Default files for Git to ignore
+
+## HTML 
 .DS_Store
 Thumbs.db
 *.swp
 *~
+
+## R environment
+.Rhistory
+.RData
+.RDataTmp
+.Ruserdata
+.Renviron
+.Rapp.history
+.Rproj.user/
+.httr-oauth
+
+# System
+[Dd]esktop.ini
