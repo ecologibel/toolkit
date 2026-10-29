@@ -188,6 +188,7 @@ print(n_captures)
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/r/r.min.js"></script>
+<script src="../sync.js"></script>
 <script>
   const wrap = document.getElementById("editor-wrap");
   const area = document.getElementById("editor-area");
@@ -279,6 +280,21 @@ print(n_captures)
       currentTheme;
     editor.refresh();
   }
+
+  // Sync editor content via Google Drive
+  ToolSync.init({
+    file:     "r-codepad.json",
+    keys:     ["r-editor-content"],
+    onRemote: () => {
+      const cursor = editor.getCursor();
+      restoring = true;
+      editor.setValue(
+        localStorage.getItem("r-editor-content") || ""
+      );
+      restoring = false;
+      editor.setCursor(cursor);
+    }
+  });
 </script>
 </body>
 </html>

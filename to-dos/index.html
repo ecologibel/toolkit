@@ -550,6 +550,7 @@
   </div>
 </div>
 
+<script src="../sync.js"></script>
 <script>
   const STORAGE_KEY = "todo-data";
   const THEME_KEY   = "todo-theme";
@@ -1804,6 +1805,13 @@
   }
 
   renderCurrentView();
+
+  // Sync to-dos and sections via Google Drive
+  ToolSync.init({
+    file:     "to-dos.json",
+    keys:     [STORAGE_KEY, TOGGLE_SEC],
+    onRemote: () => renderCurrentView()
+  });
 </script>
 </body>
 </html>
