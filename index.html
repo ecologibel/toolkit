@@ -7,19 +7,124 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f7f7f5;
-    color: #24292e;
-    display: flex;
-    justify-content: center;
-    padding: 80px 24px;
+  /* ---- Modes ---- */
+  .t-light {
+    --scroll-thumb: #bccfd2;
+    --bg:     #ecf2f2;
+    --border: #c8d7d9;
+    --card:   #f6fafa;
+    --fg:     #24292e;
+    --muted:  #6a737d;
+    --accent: #0c9e9a;
+  }
+  .t-dark {
+    --scroll-thumb: #1e3a52;
+    --bg:     #011627;
+    --border: #1e3a52;
+    --card:   #01111f;
+    --fg:     #d6deeb;
+    --muted:  #6c7a89;
+    --accent: #7fdbca;
   }
 
-  main { width: 100%; max-width: 480px; }
+  /* ---- Sizes ---- */
+  .size-s { --fs: 15px; }
+  .size-m { --fs: 17px; }
+  .size-l { --fs: 20px; }
+
+  /* Scrollbars in the mode's colours */
+  html { scrollbar-color: #bccfd2 transparent; }
+  html:has(body.t-dark) { scrollbar-color: #1e3a52 transparent; }
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb, #bccfd2);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  /* ---- Toolbar, dark in both modes ---- */
+  #toolbar {
+    background: #01111f;
+    border-bottom: 1px solid #1e3a52;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 7px 14px;
+    text-transform: lowercase;
+  }
+  .dropdown { display: inline-block; position: relative; }
+  .dropdown-btn {
+    background: #012a3f;
+    border: 1px solid #1e3a52;
+    border-radius: 4px;
+    color: #d6deeb;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 4px 22px 4px 8px;
+    position: relative;
+    white-space: nowrap;
+  }
+  .dropdown-btn::after {
+    border-left: 3.5px solid transparent;
+    border-right: 3.5px solid transparent;
+    border-top: 4px solid #6c7a89;
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .dropdown-menu {
+    background: #012a3f;
+    border: 1px solid #1e3a52;
+    border-radius: 4px;
+    display: none;
+    font-size: 16px;
+    min-width: 100%;
+    padding: 4px 0;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 2px);
+    z-index: 100;
+  }
+  .dropdown.open .dropdown-menu { display: block; }
+  .dropdown-item {
+    color: #d6deeb;
+    cursor: pointer;
+    padding: 5px 12px;
+    white-space: nowrap;
+  }
+  .dropdown-item:hover { background: #01111f; }
+  .dropdown-item.active { color: #7fdbca; }
+
+  /* ---- Menu ---- */
+  main {
+    font-size: var(--fs);
+    transition: font-size 0.2s ease, max-width 0.25s ease;
+    margin: 80px auto;
+    max-width: 480px;
+    padding: 0 24px;
+    text-transform: lowercase;
+  }
+
+  /* Width options */
+  .width-normal main { max-width: 560px; }
+  .width-wide main { max-width: calc(50% + 280px); }
+  .width-full main { max-width: 100%; }
 
   h1 {
-    font-size: 22px;
+    font-size: 1.4em;
     font-weight: 500;
     margin-bottom: 32px;
   }
@@ -28,34 +133,115 @@
 
   li { margin-bottom: 8px; }
 
-  a {
+  main a {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
     display: block;
     padding: 14px 18px;
-    background: #fff;
-    border: 1px solid #e1e4e8;
-    border-radius: 8px;
-    color: #24292e;
     text-decoration: none;
-    font-size: 15px;
-    transition: border-color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
   }
 
-  a:hover { border-color: #888; }
+  main a:hover { border-color: var(--accent); }
 
-  a span {
-    font-size: 13px;
-    color: #6a737d;
+  main a span {
+    color: var(--muted);
+    font-size: 0.88em;
     margin-left: 8px;
   }
 </style>
 </head>
-<body>
+<body class="t-light size-m width-normal">
+<div id="toolbar">
+  <div class="dropdown" id="dd-theme">
+    <div class="dropdown-btn">Light</div>
+    <div class="dropdown-menu">
+      <div class="dropdown-item" data-value="t-dark">Dark</div>
+      <div class="dropdown-item active" data-value="t-light">Light</div>
+    </div>
+  </div>
+  <div class="dropdown" id="dd-size">
+    <div class="dropdown-btn">Medium</div>
+    <div class="dropdown-menu">
+      <div class="dropdown-item" data-value="size-s">Small</div>
+      <div class="dropdown-item active" data-value="size-m">Medium</div>
+      <div class="dropdown-item" data-value="size-l">Large</div>
+    </div>
+  </div>
+  <div class="dropdown" id="dd-width">
+    <div class="dropdown-btn">Normal</div>
+    <div class="dropdown-menu">
+      <div class="dropdown-item active" data-value="width-normal">Normal</div>
+      <div class="dropdown-item" data-value="width-wide">Wide</div>
+      <div class="dropdown-item" data-value="width-full">Full</div>
+    </div>
+  </div>
+</div>
 <main>
-  <h1>Tools</h1>
+  <h1>Toolkit</h1>
   <ul>
     <li><a href="r-codepad/">R codepad <span>syntax-highlighted scratchpad</span></a></li>
-    <li><a href="to-dos/">To dos <span>simple, toggle, weekly, monthly, and annual task lists</span></a></li>
+    <li><a href="to-dos/">To dos <span>simple, dates, weeks, months, years, and done to-do lists</span></a></li>
   </ul>
 </main>
+
+<script>
+  const OPTIONS = {
+    "dd-size":  { key: "toolkit-size", values: ["size-s", "size-m", "size-l"] },
+    "dd-theme": { key: "toolkit-mode", values: ["t-dark", "t-light"] },
+    "dd-width": {
+      key: "toolkit-width", values: ["width-normal", "width-wide", "width-full"]
+    }
+  };
+
+  // Apply a setting, mark it, and show it on the button
+  function choose(ddId, value) {
+    const dd = document.getElementById(ddId);
+    OPTIONS[ddId].values.forEach(v => document.body.classList.remove(v));
+    document.body.classList.add(value);
+    dd.querySelectorAll(".dropdown-item").forEach(item => {
+      const on = item.dataset.value === value;
+      item.classList.toggle("active", on);
+      if (on) {
+        dd.querySelector(".dropdown-btn").textContent = item.textContent;
+      }
+    });
+  }
+
+  // Open one menu at a time; click elsewhere to close
+  document.querySelectorAll(".dropdown-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const dd = btn.parentElement;
+      document.querySelectorAll(".dropdown.open").forEach(d => {
+        if (d !== dd) d.classList.remove("open");
+      });
+      dd.classList.toggle("open");
+    });
+  });
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".dropdown.open")
+      .forEach(d => d.classList.remove("open"));
+  });
+
+  Object.keys(OPTIONS).forEach(ddId => {
+    const { key, values } = OPTIONS[ddId];
+    document.querySelectorAll("#" + ddId + " .dropdown-item")
+      .forEach(item => {
+        item.addEventListener("click", () => {
+          choose(ddId, item.dataset.value);
+          try { localStorage.setItem(key, item.dataset.value); } catch {}
+        });
+      });
+
+    // Restore the saved setting
+    let saved = null;
+    try { saved = localStorage.getItem(key); } catch {}
+    if (values.includes(saved)) choose(ddId, saved);
+  });
+</script>
 </body>
 </html>

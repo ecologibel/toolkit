@@ -12,12 +12,12 @@
     --no-fg:         #d6deeb;
     --no-gutbg:      #011627;
     --no-gutfg:      #6c7a89;
-    --no-activeline: #010e17;
+    --no-codebg:     #010e1a;
     --no-selection:  rgba(95, 126, 151, 0.47);
     --no-cursor:     #80a4c2;
     --no-keyword:    #c792ea;
     --no-operator:   #7fdbca;
-    --no-number:     #82aaff;
+    --no-number:     #f78c6c;
     --no-string:     #addb67;
     --no-comment:    #637777;
     --no-function:   #82aaff;
@@ -29,7 +29,7 @@
     --sel-bg:        #012a3f;
     --sel-bdr:       #1e3a52;
     --sel-fg:        #d6deeb;
-    --font-mono: 'JetBrains Mono', 'Fira Mono', 'Cascadia Code', monospace;
+    --font-mono: 'Lucida Console', 'Lucida Sans Typewriter', monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,29 +47,104 @@
   }
 
   /* ---- Toolbar ---- */
+  /* The toolbar keeps the dark palette in both modes */
   #toolbar {
+    --sel-accent: #7fdbca;
+    --sel-bdr:    #1e3a52;
+    --sel-bg:     #012a3f;
+    --sel-fg:     #d6deeb;
+    --sel-hover:  #012a3f;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding: 7px 14px;
     background: var(--toolbar-bg);
     border-bottom: 1px solid var(--toolbar-bdr);
     flex-shrink: 0;
   }
 
-  #theme-select {
-    background: var(--sel-bg);
-    border: 1px solid var(--sel-bdr);
-    color: var(--sel-fg);
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    outline: none;
-    font-family: sans-serif;
+  #toolbar, #tool-sync {
+    font-family: 'Segoe UI',
+      -apple-system, BlinkMacSystemFont, sans-serif;
+    text-transform: lowercase;
   }
 
-  #theme-select:focus { border-color: var(--no-operator); }
+  #home-link {
+    border: 1px solid var(--sel-bdr);
+    border-radius: 4px;
+    color: var(--sel-fg);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    opacity: 0.75;
+    padding: 3px 10px;
+    text-decoration: none;
+  }
+
+  #home-link:hover { opacity: 1; }
+
+  /* ---- Dropdowns ---- */
+  #dropdown-controls {
+    display: flex;
+    gap: 8px;
+  }
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-btn {
+    background: var(--sel-bg);
+    border: 1px solid var(--sel-bdr);
+    border-radius: 4px;
+    color: var(--sel-fg);
+    cursor: pointer;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 4px 22px 4px 8px;
+    position: relative;
+    white-space: nowrap;
+  }
+  .dropdown-btn::after {
+    border-left: 3.5px solid transparent;
+    border-right: 3.5px solid transparent;
+    border-top: 4px solid var(--sel-fg);
+    content: '';
+    opacity: 0.6;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .dropdown-menu {
+    background: var(--sel-bg);
+    border: 1px solid var(--sel-bdr);
+    border-radius: 4px;
+    display: none;
+    font-size: 16px;
+    min-width: 100%;
+    padding: 4px 0;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 2px);
+    z-index: 100;
+  }
+  .dropdown.open .dropdown-menu { display: block; }
+  .dropdown-item {
+    color: var(--sel-fg);
+    cursor: pointer;
+    padding: 5px 12px;
+    white-space: nowrap;
+  }
+  .dropdown-item:hover { background: var(--sel-hover); }
+  .dropdown-item.active { color: var(--sel-accent); }
+
+  /* Brief colour fade and resize while mode or size changes */
+  .theme-anim, .theme-anim * {
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+      color 0.25s ease !important;
+  }
+  .size-anim .CodeMirror { transition: font-size 0.2s ease; }
+
+  /* Sync button text */
+  body #tool-sync { font-size: 16px; }
 
   /* ---- Editor ---- */
   #editor-area {
@@ -78,72 +153,174 @@
     display: flex;
     justify-content: center;
     background: var(--no-gutbg);
+    padding: 24px;
     transition: background 0.15s;
   }
 
+  /* Coding area: set below the toolbar, thin border, rounded */
   #editor-wrap {
-    width: 100%;
-    max-width: 780px;
+    border: 1px solid #1e3a52;
+    border-radius: 6px;
     height: 100%;
+    max-width: 780px;
+    overflow: hidden;
+    transition: max-width 0.25s ease;
+    width: 100%;
   }
+  #editor-wrap.t-github { border-color: #a3c4c6; }
+  #editor-wrap.width-normal { max-width: 880px; }
+  #editor-wrap.width-wide { max-width: calc(50% + 440px); }
+  #editor-wrap.width-full { max-width: 100%; }
+
+  /* Rainbow brackets by nesting depth */
+  .t-night-owl .cm-paren-0 { color: #ffd700 !important; }
+  .t-night-owl .cm-paren-1 { color: #da70d6 !important; }
+  .t-night-owl .cm-paren-2 { color: #179fff !important; }
+  .t-night-owl .cm-paren-3 { color: #3dd68c !important; }
+  .t-night-owl .cm-paren-4 { color: #ff6b8b !important; }
+  .t-night-owl .cm-paren-5 { color: #a59cff !important; }
+  .t-night-owl .cm-paren-6 { color: #ffa94d !important; }
+  .t-github .cm-paren-0 { color: #b8860b !important; }
+  .t-github .cm-paren-1 { color: #a33ea1 !important; }
+  .t-github .cm-paren-2 { color: #0f6fc6 !important; }
+  .t-github .cm-paren-3 { color: #1e8c5a !important; }
+  .t-github .cm-paren-4 { color: #c2185b !important; }
+  .t-github .cm-paren-5 { color: #5a4fcf !important; }
+  .t-github .cm-paren-6 { color: #c26a00 !important; }
 
   .CodeMirror {
     height: 100% !important;
     font-family: var(--font-mono) !important;
-    font-size: 14px;
+    font-weight: 400 !important;
     line-height: 1.6 !important;
   }
 
   .CodeMirror-scroll { height: 100% !important; }
 
-  /* ---- Night Owl (CCL) ---- */
-  .t-night-owl .CodeMirror { background: var(--no-bg) !important; color: var(--no-fg) !important; }
-  .t-night-owl .CodeMirror-gutters { background: var(--no-gutbg) !important; border-right: 1px solid #1e3a52 !important; }
-  .t-night-owl .CodeMirror-linenumber { color: var(--no-gutfg) !important; }
+  /* Editor text size for each size option */
+  .size-s .CodeMirror { font-size: 16px; }
+  .size-m .CodeMirror { font-size: 18px; }
+  .size-l .CodeMirror { font-size: 21px; }
+
+  /* ---- Night Owl (CCL), matching ccl-rstudio-theme-dark ---- */
+  .t-night-owl .CodeMirror { background: var(--no-codebg) !important; color: var(--no-fg) !important; }
+  .t-night-owl .CodeMirror-gutters { background: var(--no-codebg) !important; border-right: none !important; }
+  .t-night-owl .CodeMirror-activeline-gutter { background: var(--no-codebg) !important; }
+  .t-night-owl .CodeMirror-linenumber { color: #1e3a52 !important; }
   .t-night-owl .CodeMirror-cursor { border-left: 2px solid var(--no-cursor) !important; }
   .t-night-owl .CodeMirror-selected { background: var(--no-selection) !important; }
-  .t-night-owl .CodeMirror-activeline-background { background: var(--no-activeline) !important; }
+  .t-night-owl .CodeMirror-activeline-background { background: var(--no-codebg) !important; }
   .t-night-owl .cm-keyword    { color: var(--no-keyword)  !important; }
   .t-night-owl .cm-operator   { color: var(--no-operator) !important; }
   .t-night-owl .cm-number     { color: var(--no-number)   !important; }
   .t-night-owl .cm-string     { color: var(--no-string)   !important; }
-  .t-night-owl .cm-comment    { color: var(--no-comment)  !important; font-style: italic; }
+  .t-night-owl .cm-comment    { color: #2f5d69 !important; }
   .t-night-owl .cm-def        { color: var(--no-function) !important; }
   .t-night-owl .cm-variable   { color: var(--no-fg)       !important; }
-  .t-night-owl .cm-variable-2 { color: var(--no-variable) !important; }
+  .t-night-owl .cm-variable-2 { color: var(--no-operator) !important; }
+  .t-night-owl .cm-variable-3 { color: var(--no-fg)       !important; }
+  .t-night-owl .cm-arg-is     { color: var(--no-operator) !important; }
+  .t-night-owl .cm-fn-call:not(.cm-string):not(.cm-comment):not(.cm-keyword) {
+    color: var(--no-function) !important;
+  }
   .t-night-owl .cm-atom       { color: var(--no-constant) !important; }
   .t-night-owl .cm-builtin    { color: var(--no-function) !important; }
-  .t-night-owl .cm-bracket    { background: var(--no-bracket) !important; }
+  .t-night-owl .CodeMirror-matchingbracket {
+    background: var(--no-bracket); color: inherit !important;
+  }
 
   /* ---- Light ---- */
-  .t-github .CodeMirror { background: #fff !important; color: #24292e !important; }
-  .t-github .CodeMirror-gutters { background: #f6f8fa !important; border-right: 1px solid #e1e4e8 !important; }
-  .t-github .CodeMirror-linenumber { color: #babbbd !important; }
+  .t-github .CodeMirror { background: #f6fafa !important; color: #24292e !important; }
+  .t-github .CodeMirror-gutters { background: #f6fafa !important; border-right: none !important; }
+  .t-github .CodeMirror-linenumber { color: #a3c4c6 !important; }
   .t-github .CodeMirror-cursor { border-left: 2px solid #24292e !important; }
   .t-github .CodeMirror-selected { background: #c8d3fa !important; }
-  .t-github .CodeMirror-activeline-background { background: #f1f8ff !important; }
-  .t-github .cm-keyword    { color: #d73a49 !important; }
-  .t-github .cm-operator   { color: #24292e !important; }
-  .t-github .cm-number     { color: #005cc5 !important; }
-  .t-github .cm-string     { color: #032f62 !important; }
-  .t-github .cm-comment    { color: #6a737d !important; font-style: italic; }
-  .t-github .cm-def        { color: #6f42c1 !important; }
+  .t-github .CodeMirror-activeline-background { background: #f6fafa !important; }
+  /* Same scheme as dark mode, in deeper shades for a light background */
+  .t-github .cm-keyword    { color: #8e44c4 !important; }
+  .t-github .cm-operator   { color: #0c9e9a !important; }
+  .t-github .cm-number     { color: #c9532b !important; }
+  .t-github .cm-string     { color: #5f8a1c !important; }
+  .t-github .cm-comment    { color: #2f5d69 !important; }
+  .t-github .cm-def        { color: #3b6fd6 !important; }
   .t-github .cm-variable   { color: #24292e !important; }
-  .t-github .cm-variable-2 { color: #e36209 !important; }
-  .t-github .cm-atom       { color: #005cc5 !important; }
-  .t-github .cm-builtin    { color: #6f42c1 !important; }
+  .t-github .cm-variable-2 { color: #0c9e9a !important; }
+  .t-github .cm-variable-3 { color: #24292e !important; }
+  .t-github .cm-arg-is     { color: #0c9e9a !important; }
+  .t-github .cm-atom       { color: #c9532b !important; }
+  .t-github .cm-builtin    { color: #3b6fd6 !important; }
+  .t-github .cm-fn-call:not(.cm-string):not(.cm-comment):not(.cm-keyword) {
+    color: #3b6fd6 !important;
+  }
+
+  /* ---- Spacing inside the coding area ---- */
+
+  /* Line numbers sit near the left edge; the code keeps its place */
+  .CodeMirror-linenumber {
+    padding: 0 22px 0 12px !important;
+    text-align: left !important;
+  }
+  .CodeMirror-lines { padding: 16px 0 !important; }
+  .CodeMirror pre.CodeMirror-line,
+  .CodeMirror pre.CodeMirror-line-like { padding: 0 16px 0 4px !important; }
+
+  /* ---- Scrollbars in the mode's colours ---- */
+  .t-night-owl { --scroll-thumb: #1e3a52; }
+  .t-github    { --scroll-thumb: #bccfd2; }
+  #editor-wrap { scrollbar-color: var(--scroll-thumb) transparent; }
+  #editor-wrap ::-webkit-scrollbar { height: 10px; width: 10px; }
+  #editor-wrap ::-webkit-scrollbar-track { background: transparent; }
+  #editor-wrap ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+  .CodeMirror-scrollbar-filler,
+  .CodeMirror-gutter-filler { background: transparent !important; }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="toolbar">
-    <select id="theme-select">
-      <option value="t-night-owl" selected>Dark</option>
-      <option value="t-github">Light</option>
-    </select>
+    <a id="home-link" href="../index.html"
+      title="Back to toolkit">&lsaquo; Toolkit</a>
+    <div id="dropdown-controls">
+      <div class="dropdown" id="dd-theme">
+        <div class="dropdown-btn">Dark</div>
+        <div class="dropdown-menu">
+          <div class="dropdown-item active"
+            data-value="t-night-owl">Dark</div>
+          <div class="dropdown-item"
+            data-value="t-github">Light</div>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-size">
+        <div class="dropdown-btn">Medium</div>
+        <div class="dropdown-menu">
+          <div class="dropdown-item"
+            data-value="size-s">Small</div>
+          <div class="dropdown-item active"
+            data-value="size-m">Medium</div>
+          <div class="dropdown-item"
+            data-value="size-l">Large</div>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-width">
+        <div class="dropdown-btn">Normal</div>
+        <div class="dropdown-menu">
+          <div class="dropdown-item active"
+            data-value="width-normal">Normal</div>
+          <div class="dropdown-item"
+            data-value="width-wide">Wide</div>
+          <div class="dropdown-item"
+            data-value="width-full">Full</div>
+        </div>
+      </div>
+    </div>
   </div>
   <div id="editor-area">
-  <div id="editor-wrap" class="t-night-owl">
+  <div id="editor-wrap" class="t-night-owl size-m width-normal">
     <textarea id="editor"># Eastern quoll habitat analysis
 # Mulligans Flat Woodland Sanctuary
 
@@ -188,18 +365,45 @@ print(n_captures)
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/r/r.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="../sync.js"></script>
 <script>
   const wrap = document.getElementById("editor-wrap");
   const area = document.getElementById("editor-area");
-  const toolbar = document.getElementById("toolbar");
 
+  // Page background beside the editor for each mode
   const themeBgs = {
-    "t-night-owl": { gutter: "#011627", toolbar: "#01111f", border: "#1e3a52",
-                     selBg: "#012a3f", selBdr: "#1e3a52", selFg: "#d6deeb" },
-    "t-github":    { gutter: "#f6f8fa", toolbar: "#f0f0f0", border: "#e1e4e8",
-                     selBg: "#fff",    selBdr: "#d1d5da", selFg: "#24292e" }
+    "t-night-owl": { gutter: "#011627" },
+    "t-github":    { gutter: "#ecf2f2" }
   };
+
+  // R highlighting plus rainbow brackets: each (, [ or { is coloured by
+  // how deeply it is nested; brackets in strings and comments are left
+  CodeMirror.defineMode("r-rainbow", config => {
+    const base = CodeMirror.getMode(config, "r");
+    return {
+      copyState: st => ({
+        base: CodeMirror.copyState(base, st.base), depth: st.depth
+      }),
+      electricInput: base.electricInput,
+      indent: (st, after, line) => base.indent(st.base, after, line),
+      lineComment: base.lineComment,
+      startState: () => ({ base: CodeMirror.startState(base), depth: 0 }),
+      token(stream, st) {
+        const style = base.token(stream, st.base);
+        const ch = stream.current();
+        if (!style && ch.length === 1 && "([{".includes(ch)) {
+          return "paren-" + (st.depth++ % 7);
+        }
+        if (!style && ch.length === 1 && ")]}".includes(ch)) {
+          st.depth = Math.max(0, st.depth - 1);
+          return "paren-" + (st.depth % 7);
+        }
+        return style;
+      }
+    };
+  });
 
   const editor = CodeMirror.fromTextArea(
     document.getElementById("editor"),
@@ -210,7 +414,7 @@ print(n_captures)
       lineNumbers:     true,
       lineWrapping:    false,
       matchBrackets:   true,
-      mode:            "r",
+      mode:            "r-rainbow",
       styleActiveLine: true,
       tabSize:         2,
       extraKeys: {
@@ -222,30 +426,118 @@ print(n_captures)
 
   editor.setSize("100%", "100%");
 
+  // Colour function calls, as RStudio does: a name followed by "("
+  editor.addOverlay({
+    token(stream) {
+      if (stream.match(/^[A-Za-z.][\w.]*(?=\s*\()/)) return "fn-call";
+
+      // Skip whole words so only full names are matched
+      if (!stream.match(/^[\w.]+/)) stream.next();
+      return null;
+    }
+  });
+
   let currentTheme = "t-night-owl";
+  let currentSize  = "size-m";
 
   function applyThemeChrome(themeKey) {
     const t = themeBgs[themeKey];
-    area.style.background       = t.gutter;
+    area.style.background          = t.gutter;
     document.body.style.background = t.gutter;
-    toolbar.style.background    = t.toolbar;
-    toolbar.style.borderColor   = t.border;
-    const sel = document.getElementById("theme-select");
-    sel.style.background   = t.selBg;
-    sel.style.borderColor  = t.selBdr;
-    sel.style.color        = t.selFg;
+  }
+
+  function applyTheme(theme) {
+    wrap.classList.remove(currentTheme);
+    currentTheme = theme;
+    wrap.classList.add(currentTheme);
+    applyThemeChrome(currentTheme);
+    setDropdownActive("dd-theme", currentTheme);
+    editor.refresh();
+  }
+
+  let currentWidth = "width-normal";
+  function applyWidth(w) {
+    wrap.classList.remove(currentWidth);
+    currentWidth = w;
+    wrap.classList.add(currentWidth);
+    setDropdownActive("dd-width", currentWidth);
+    setTimeout(() => editor.refresh(), 270);
+  }
+
+  function applySize(size) {
+    wrap.classList.remove(currentSize);
+    currentSize = size;
+    wrap.classList.add(currentSize);
+    setDropdownActive("dd-size", currentSize);
+    editor.refresh();
   }
 
   applyThemeChrome("t-night-owl");
 
-  document.getElementById("theme-select").addEventListener("change", e => {
-    wrap.classList.remove(currentTheme);
-    currentTheme = e.target.value;
-    wrap.classList.add(currentTheme);
-    applyThemeChrome(currentTheme);
-    localStorage.setItem("r-editor-theme", currentTheme);
-    editor.refresh();
+  // ---- Dropdowns ----
+
+  // Add a class to the page briefly, then run an optional follow-up
+  function animate(cls, ms, after) {
+    document.body.classList.add(cls);
+    setTimeout(() => {
+      document.body.classList.remove(cls);
+      if (after) after();
+    }, ms);
+  }
+
+  // Mark the chosen option and show it on the button
+  function setDropdownActive(ddId, value) {
+    const dd = document.getElementById(ddId);
+    dd.querySelectorAll(".dropdown-item").forEach(item => {
+      const on = item.dataset.value === value;
+      item.classList.toggle("active", on);
+      if (on) {
+        dd.querySelector(".dropdown-btn").textContent = item.textContent;
+      }
+    });
+  }
+
+  document.querySelectorAll(".dropdown-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const dd = btn.parentElement;
+      document.querySelectorAll(".dropdown.open").forEach(d => {
+        if (d !== dd) d.classList.remove("open");
+      });
+      dd.classList.toggle("open");
+    });
   });
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".dropdown.open")
+      .forEach(d => d.classList.remove("open"));
+  });
+
+  document.querySelectorAll("#dd-theme .dropdown-item")
+    .forEach(item => {
+      item.addEventListener("click", () => {
+        animate("theme-anim", 300);
+        applyTheme(item.dataset.value);
+        localStorage.setItem("r-editor-theme", currentTheme);
+      });
+    });
+
+  document.querySelectorAll("#dd-width .dropdown-item")
+    .forEach(item => {
+      item.addEventListener("click", () => {
+        applyWidth(item.dataset.value);
+        localStorage.setItem("r-editor-width", currentWidth);
+      });
+    });
+
+  document.querySelectorAll("#dd-size .dropdown-item")
+    .forEach(item => {
+      item.addEventListener("click", () => {
+        animate("size-anim", 220, () => editor.refresh());
+        applySize(item.dataset.value);
+        localStorage.setItem("r-editor-size", currentSize);
+      });
+    });
 
   // Save content on every change
   let restoring = false;
@@ -271,14 +563,16 @@ print(n_captures)
   const savedTheme = localStorage.getItem(
     "r-editor-theme"
   );
-  if (savedTheme && themeBgs[savedTheme]) {
-    wrap.classList.remove(currentTheme);
-    currentTheme = savedTheme;
-    wrap.classList.add(currentTheme);
-    applyThemeChrome(currentTheme);
-    document.getElementById("theme-select").value =
-      currentTheme;
-    editor.refresh();
+  if (savedTheme && themeBgs[savedTheme]) applyTheme(savedTheme);
+
+  const savedWidth = localStorage.getItem("r-editor-width");
+  if (["width-normal", "width-wide", "width-full"].includes(savedWidth)) {
+    applyWidth(savedWidth);
+  }
+
+  const savedSize = localStorage.getItem("r-editor-size");
+  if (["size-s", "size-m", "size-l"].includes(savedSize)) {
+    applySize(savedSize);
   }
 
   // Sync editor content via Google Drive

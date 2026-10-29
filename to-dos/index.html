@@ -6,11 +6,14 @@
 <title>To do</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Buttons use the page font, not the browser default */
+  button { font-family: inherit; }
   html, body {
     height: 100%; overflow: hidden;
-    font-family: 'Segoe UI Light', 'Segoe UI',
+    font-family: 'Segoe UI',
       -apple-system, BlinkMacSystemFont, sans-serif;
-    font-weight: 300;
+    font-weight: 400;
   }
 
   #app {
@@ -27,7 +30,10 @@
     --fg-muted:   #6c7a89;
     --border:     #1e3a52;
     --accent:     #7fdbca;
-    --check:      #87DACA;
+    --done:       #2f5d69;
+    --overdue:    #5fbfae;
+    --scroll-thumb: #1e3a52;
+    --head-tint:  rgba(1, 22, 39, 0.5);
     --hover:      #012a3f;
     --sel-bg:     #012a3f;
     --sel-bdr:    #1e3a52;
@@ -37,65 +43,108 @@
     --drag-bg:    rgba(127, 219, 202, 0.08);
   }
   .t-light {
-    --bg:         #fff;
-    --bg-surface: #f6f8fa;
+    --bg:         #ecf2f2;
+    --bg-surface: #dce7e8;
     --fg:         #24292e;
     --fg-muted:   #6a737d;
-    --border:     #e1e4e8;
-    --accent:     #0c969b;
-    --check:      #87DACA;
-    --hover:      #f1f8ff;
-    --sel-bg:     #fff;
-    --sel-bdr:    #d1d5da;
+    --border:     #a3c4c6;
+    --accent:     #0c9e9a;
+    --done:       #2f5d69;
+    --overdue:    #077a76;
+    --scroll-thumb: #bccfd2;
+    --head-tint:  rgba(236, 242, 242, 0.5);
+    --hover:      #d9e8ea;
+    --sel-bg:     #f6fafa;
+    --sel-bdr:    #bccfd2;
     --sel-fg:     #24292e;
-    --today-bg:   rgba(19, 73, 87, 0.1);
-    --past-bg:    rgba(19, 85, 92, 0.08);
-    --drag-bg:    rgba(12, 150, 155, 0.06);
+    --today-bg:   #cce4e1;
+    --past-bg:    #dce7e8;
+    --drag-bg:    rgba(12, 158, 154, 0.1);
   }
 
   /* ---- Toolbar ---- */
+  /* Left link, centred calendar controls, right dropdowns.
+     The toolbar keeps the dark palette in both modes. */
   #toolbar {
-    display: flex;
+    --accent:     #7fdbca;
+    --bg-surface: #01111f;
+    --border:     #1e3a52;
+    --fg:         #d6deeb;
+    --fg-muted:   #6c7a89;
+    --hover:      #012a3f;
+    --sel-bdr:    #1e3a52;
+    --sel-bg:     #012a3f;
+    --sel-fg:     #d6deeb;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 8px;
     padding: 7px 14px;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  #home-link {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg-muted);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    grid-column: 1;
+    justify-self: start;
+    padding: 3px 10px;
+    text-decoration: none;
+  }
+  #home-link:hover {
+    background: var(--hover);
+    color: var(--fg);
   }
   #nav-controls {
     display: flex;
     align-items: center;
     gap: 8px;
+    grid-column: 2;
   }
   #dropdown-controls {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
+    grid-column: 3;
+    justify-self: end;
   }
   #toolbar button {
     background: none;
     border: 1px solid var(--border);
     color: var(--fg-muted);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 17px;
     padding: 3px 10px;
     border-radius: 4px;
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   #toolbar button:hover {
     background: var(--hover);
     color: var(--fg);
   }
   #nav-label {
-    font-size: 13px;
+    font-size: 17px;
     color: var(--fg);
     font-weight: 600;
-    min-width: 140px;
+    min-width: 180px;
     text-align: center;
   }
+
+  /* Lowercase headings, toggles and dropdowns */
+  #toolbar, #toolbar button, .section-heading, .toggle-name-input,
+  .add-section-btn, .day-name, .year-month-title,
+  body #tool-sync {
+    text-transform: lowercase;
+  }
+
+  /* Sync button text */
+  body #tool-sync { font-size: 16px; }
 
   /* ---- Custom dropdown ---- */
   .dropdown { position: relative; display: inline-block; }
@@ -103,11 +152,13 @@
     background: var(--sel-bg);
     border: 1px solid var(--sel-bdr);
     color: var(--sel-fg);
-    font-size: 12px;
-    padding: 4px 20px 4px 8px;
+    font-size: 16px;
+    padding: 4px 22px 4px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Semibold for headings only, not menu options */
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
     white-space: nowrap;
     position: relative;
   }
@@ -131,8 +182,8 @@
     padding: 4px 0;
     z-index: 100;
     min-width: 100%;
-    font-size: 12px;
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   .dropdown.open .dropdown-menu { display: block; }
   .dropdown-item {
@@ -154,8 +205,7 @@
     background: transparent;
     border: none;
     color: var(--fg);
-    font-family: 'Segoe UI Light', 'Segoe UI',
-      'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font: inherit;
     outline: none;
     width: 100%;
     resize: none;
@@ -194,48 +244,107 @@
     z-index: 0;
     line-height: 1.4;
   }
-  .task.done .task-highlight {
+  /* Checked items in a slightly darker highlight colour */
+  .task.done .task-highlight,
+  .task.done .task-highlight span {
     text-decoration: line-through;
-    color: var(--fg-muted);
+    color: var(--done);
   }
-  .t-dark .task.done .task-highlight {
-    color: #87DACA;
+  .task-highlight .date-token,
+  .task-highlight .mention-token {
+    color: var(--accent);
   }
-  .task-highlight .date-token {
-    color: #87DACA;
-  }
-  .task.done .task-highlight .date-token {
-    color: var(--fg-muted);
-  }
-  .t-dark .task.done .task-highlight .date-token {
-    color: #87DACA;
+  .task-highlight .tag-token {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-radius: 3px;
+    color: var(--accent);
   }
 
-  .t-dark .task input[type="checkbox"] {
-    border-color: #87DACA;
-  }
-  .t-dark .task input[type="checkbox"]:checked {
-    border-color: var(--check);
+  /* Overdue tasks in a darker highlight colour */
+  .task.overdue .task-highlight,
+  .task.overdue .task-highlight span {
+    color: var(--overdue);
   }
 
-  .size-s textarea.task-input { font-size: 12px; }
-  .size-s .day-tasks textarea.task-input { font-size: 11px; }
-  .size-m textarea.task-input { font-size: 14px; }
-  .size-m .day-tasks textarea.task-input { font-size: 13px; }
-  .size-l textarea.task-input { font-size: 17px; }
-  .size-l .day-tasks textarea.task-input { font-size: 15px; }
+  /* Tags echoed at the right of a task, each with a tinted background */
+  .task-tags {
+    display: flex;
+    flex-shrink: 0;
+    font-size: 0.8em;
+    gap: 4px;
+    line-height: 1.75;
+    white-space: nowrap;
+  }
+  .task-tags:empty { display: none; }
+  .tag-chip {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-radius: 3px;
+    color: var(--accent);
+    padding: 0 4px;
+  }
+  .task.done .tag-chip { color: var(--done); }
+
+  /* Calendar cells are narrow, so tags stay inline only */
+  .day-tasks .task-tags,
+  .year-month-tasks .task-tags {
+    display: none;
+  }
+
+  /* Task text size for each size option */
+  .size-s { --task-fs: 16px; }
+  .size-m { --task-fs: 18px; }
+  .size-l { --task-fs: 21px; }
+  .size-s .day-tasks { --task-fs: 15px; }
+  .size-m .day-tasks { --task-fs: 17px; }
+  .size-l .day-tasks { --task-fs: 19px; }
 
   /* ---- Task ---- */
   .task {
     display: flex;
     align-items: flex-start;
+    font-size: var(--task-fs, 18px);
     gap: 6px;
     padding: 6px 0;
     transition: opacity 0.15s;
   }
-  .task.indent-1 { padding-left: 24px; }
-  .task.indent-2 { padding-left: 48px; }
-  .task.indent-3 { padding-left: 72px; }
+  .task.indent-1 { padding-left: 24px; --indent: 24px; }
+  .task.indent-2 { padding-left: 48px; --indent: 48px; }
+  .task.indent-3 { padding-left: 72px; --indent: 72px; }
+
+  /* Six-dot drag handle, shown left of the checkbox on hover */
+  .task { position: relative; }
+  .drag-handle {
+    align-items: center;
+    color: var(--fg-muted);
+    cursor: grab;
+    display: flex;
+    height: 16px;
+    justify-content: center;
+    left: calc(var(--indent, 0px) - 16px);
+    opacity: 0;
+    position: absolute;
+    top: calc(6px + (var(--task-fs, 18px) * 1.4 - 16px) / 2);
+    transition: opacity 0.15s;
+    width: 12px;
+    z-index: 3;
+  }
+  .drag-handle svg { fill: currentColor; }
+  .task:hover .drag-handle { opacity: 0.6; }
+  .task .drag-handle:hover { opacity: 1; }
+  .day-tasks .drag-handle,
+  .year-month-tasks .drag-handle {
+    left: calc(var(--indent, 0px) - 7.5px);
+    width: 7px;
+  }
+  #month-view .day-tasks .drag-handle {
+    left: calc(var(--indent, 0px) - 6px);
+    width: 6px;
+  }
+  #month-view .day-tasks .drag-handle,
+  .year-month-tasks .drag-handle {
+    height: 14px;
+    top: calc(3px + (var(--task-fs, 18px) * 1.4 - 14px) / 2);
+  }
   .task.dragging { opacity: 0.3; }
   .task.drag-over-above {
     border-top: 2px solid var(--accent);
@@ -250,17 +359,18 @@
     appearance: none;
     -webkit-appearance: none;
     width: 16px; height: 16px; min-width: 16px;
-    border: 1.5px solid var(--fg-muted);
+    border: 1.5px solid var(--accent);
     border-radius: 3px;
     cursor: pointer;
-    margin-top: 2px;
+    /* Centre the box on the first line of text */
+    margin-top: calc((var(--task-fs, 18px) * 1.4 - 16px) / 2);
     position: relative;
     background: transparent;
     flex-shrink: 0;
   }
   .task input[type="checkbox"]:checked {
-    background: var(--check);
-    border-color: var(--check);
+    background: var(--accent);
+    border-color: var(--accent);
   }
   .task input[type="checkbox"]:checked::after {
     content: '';
@@ -277,7 +387,7 @@
   .task .delete-btn {
     background: none; border: none;
     color: var(--fg-muted);
-    cursor: pointer; font-size: 14px;
+    cursor: pointer; font-size: 18px;
     padding: 0 4px; opacity: 0;
     transition: opacity 0.15s;
     margin-top: 1px; flex-shrink: 0;
@@ -298,15 +408,15 @@
     padding: 40px 24px;
   }
   .section-heading {
-    font-size: 13px; font-weight: 600;
+    font-size: 17px; font-weight: 600;
     color: var(--fg-muted);
     letter-spacing: 0.04em;
     margin-bottom: 16px;
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
-  /* ---- Toggle ---- */
-  #toggle-view {
+  /* ---- Dates ---- */
+  #dates-view {
     max-width: 600px;
     margin: 0 auto;
     padding: 40px 24px;
@@ -318,23 +428,40 @@
     margin-bottom: 12px; user-select: none;
   }
   .toggle-arrow {
-    font-size: 10px; color: var(--fg-muted);
-    transition: transform 0.15s;
+    font-size: 14px; color: var(--accent);
+    transition: transform 0.2s ease;
     display: inline-block; width: 14px;
     cursor: pointer; flex-shrink: 0;
   }
   .toggle-arrow.collapsed {
     transform: rotate(-90deg);
   }
-  .toggle-tasks.collapsed { display: none; }
+  /* Animate sections open and closed */
+  .toggle-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.25s ease, opacity 0.25s ease;
+  }
+  .toggle-body.collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  .toggle-body > .toggle-tasks {
+    min-height: 0;
+    overflow: hidden;
+
+    /* Room on the left for the drag handle inside the clipped area */
+    margin-left: -18px;
+    padding-left: 18px;
+  }
   .toggle-name-input {
     background: transparent;
     border: none;
-    color: var(--fg-muted);
-    font-size: 13px;
+    color: var(--accent);
+    font-size: 17px;
     font-weight: 600;
     letter-spacing: 0.04em;
-    font-family: 'Segoe UI Light', 'Segoe UI',
+    font-family: 'Segoe UI',
       -apple-system, BlinkMacSystemFont, sans-serif;
     outline: none;
     flex: 1;
@@ -343,12 +470,11 @@
   }
   .toggle-name-input:focus {
     cursor: text;
-    color: var(--fg);
   }
   .toggle-delete-btn {
     background: none; border: none;
     color: var(--fg-muted);
-    cursor: pointer; font-size: 14px;
+    cursor: pointer; font-size: 18px;
     padding: 0 4px; opacity: 0;
     transition: opacity 0.15s;
   }
@@ -362,11 +488,11 @@
     background: none;
     border: 1px dashed var(--border);
     color: var(--fg-muted);
-    font-size: 12px;
+    font-size: 16px;
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
-    font-family: 'Segoe UI Light', 'Segoe UI',
+    font-family: 'Segoe UI',
       -apple-system, BlinkMacSystemFont, sans-serif;
     width: 100%;
     text-align: center;
@@ -377,19 +503,95 @@
     color: var(--fg);
   }
 
+  /* ---- Done ---- */
+  #done-view {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  .done-empty { color: var(--fg-muted); }
+
+  /* Where a completed task came from */
+  .task-source {
+    color: var(--fg-muted);
+    flex-shrink: 0;
+    font-size: 0.8em;
+    line-height: 1.75;
+    text-transform: lowercase;
+    white-space: nowrap;
+  }
+
+  /* Typing a new date or range for the dates view */
+  .add-range-input {
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+    padding: 8px 16px;
+    text-align: center;
+    width: 100%;
+  }
+  .add-range-input.invalid { border-color: #e06c75; }
+  .add-range-input::placeholder { color: var(--fg-muted); }
+  .add-section-btn { margin-bottom: 32px; }
+
+  /* Fixed title for the done toggle */
+  .toggle-done { margin-top: 32px; }
+  .toggle-title {
+    color: var(--accent);
+    cursor: pointer;
+    flex: 1;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
+
   /* ---- Column grids ---- */
+  /* Outlined, rounded calendar set apart from the toolbar */
   .col-view {
-    display: grid; margin: 0 auto;
-    min-height: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: grid;
+    margin: 24px auto 60px;
+    max-width: 1152px;
+    min-height: calc(100% - 84px);
+    overflow: clip;
+    width: calc(100% - 48px);
   }
   #weekly-view {
     grid-template-columns: repeat(8, 1fr);
-    max-width: 1200px; padding: 0 24px 60px;
   }
   #month-view {
     grid-template-columns: repeat(7, 1fr);
-    max-width: 1200px; padding: 0 24px 60px;
   }
+  #month-view .day-col:nth-child(7n) { border-right: none; }
+
+  /* Month scrolls through weeks; day names stay at the top */
+  #month-view {
+    grid-auto-rows: max-content;
+    grid-template-rows: max-content;
+  }
+
+  /* Rows take their tallest cell's content; the minimum height sits on
+     the cells. (In a grid taller than its scroll box, auto rows never
+     grow past their minimum, so tasks used to spill out.) */
+  #month-view .day-col {
+    border-top: 1px solid var(--border);
+    min-height: 120px;
+  }
+  #month-view .day-col.month-head { min-height: 0; }
+  #month-view .month-head {
+    background: var(--bg);
+    border-top: none;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  #month-view .month-start .day-date { color: var(--accent); }
   .day-col {
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
@@ -400,36 +602,37 @@
   .day-col.today { background: var(--today-bg); }
   .day-col.past  { background: var(--past-bg); }
   .day-header {
-    padding: 12px 10px 8px;
+    padding: 12px 5px 8px 7.5px;
     border-bottom: 1px solid var(--border);
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; flex-shrink: 0;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; flex-shrink: 0;
   }
   .day-name {
-    font-size: 11px; font-weight: 600;
+    font-size: 15px; font-weight: 600;
     color: var(--fg-muted);
     letter-spacing: 0.04em;
   }
   .day-date {
-    font-size: 18px; font-weight: 600;
+    font-size: 22px; font-weight: 600;
     color: var(--fg); margin-top: 2px;
   }
   .day-col.today .day-name { color: var(--accent); }
   .day-col.today .day-date { color: var(--accent); }
   .day-tasks {
-    flex: 1; overflow-y: auto; padding: 8px 10px;
+    flex: 1; overflow-y: auto; padding: 8px 5px 8px 7.5px;
     cursor: pointer;
   }
 
-  #month-view .day-header { padding: 8px 8px 6px; }
-  #month-view .day-date { font-size: 15px; }
+  #month-view .day-header { padding: 8px 4px 6px 6px; }
+  #month-view .day-date { font-size: 19px; }
   #month-view .day-tasks {
-    padding: 4px 8px;
+    padding: 4px 4px 4px 6px;
     min-height: 32px;
     overflow-y: visible;
   }
   #month-view .task { padding: 3px 0; gap: 4px; }
   #month-view .task input[type="checkbox"] {
     width: 14px; height: 14px; min-width: 14px;
+    margin-top: calc((var(--task-fs, 18px) * 1.4 - 14px) / 2);
   }
   #month-view .task input[type="checkbox"]:checked::after {
     left: 3px; top: 0; width: 4px; height: 8px;
@@ -459,10 +662,10 @@
     background: var(--today-bg);
   }
   .year-month-title {
-    font-size: 12px; font-weight: 600;
-    color: var(--fg); padding: 8px 10px;
+    font-size: 16px; font-weight: 600;
+    color: var(--fg); padding: 8px 5px 8px 7.5px;
     border-bottom: 1px solid var(--border);
-    font-family: 'Segoe UI Light', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     flex-shrink: 0;
   }
   .year-month-card.current-month .year-month-title {
@@ -471,24 +674,131 @@
   .year-month-tasks {
     flex: 1;
     overflow-y: auto;
-    padding: 6px 10px;
+    padding: 6px 5px 6px 7.5px;
     cursor: pointer;
   }
   .year-month-tasks .task { padding: 3px 0; gap: 6px; }
   .year-month-tasks .task input[type="checkbox"] {
     width: 14px; height: 14px; min-width: 14px;
+    margin-top: calc((var(--task-fs, 18px) * 1.4 - 14px) / 2);
   }
   .year-month-tasks .task
     input[type="checkbox"]:checked::after {
     left: 3px; top: 0; width: 4px; height: 8px;
   }
 
+  /* Calendar cells: wrapped lines start under the checkbox */
+  .day-tasks .task,
+  .year-month-tasks .task {
+    position: relative;
+  }
+  .day-tasks .task input[type="checkbox"],
+  .year-month-tasks .task input[type="checkbox"] {
+    position: absolute;
+    z-index: 2;
+  }
+  .day-tasks textarea.task-input,
+  .day-tasks .task-highlight {
+    text-indent: 22px;
+  }
+  #month-view .day-tasks textarea.task-input,
+  #month-view .day-tasks .task-highlight {
+    text-indent: 18px;
+  }
+  .year-month-tasks textarea.task-input,
+  .year-month-tasks .task-highlight {
+    text-indent: 20px;
+  }
+
+  /* Brief colour fade while the mode changes */
+  .theme-anim, .theme-anim * {
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+      color 0.25s ease !important;
+  }
+
+  /* Brief text resize while the size changes */
+  .size-anim .task { transition: font-size 0.2s ease; }
+  .size-anim .task input[type="checkbox"] {
+    transition: margin-top 0.2s ease;
+  }
+
+  /* Views fade and rise in slightly when you switch */
+  @keyframes view-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .view-in { animation: view-in 0.22s ease; }
+
+  /* ---- Scrollbars in the mode's colours ---- */
+  #app { scrollbar-color: var(--scroll-thumb) transparent; }
+  #app ::-webkit-scrollbar { height: 10px; width: 10px; }
+  #app ::-webkit-scrollbar-track { background: transparent; }
+  #app ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+
+  /* ---- Width options ----
+     Normal is a little wider than before; wide sits halfway to full */
+  .width-normal #simple-view,
+  .width-normal #dates-view,
+  .width-normal #done-view { max-width: 720px; }
+  #simple-view, #dates-view, #done-view, .col-view, #year-view {
+    transition: max-width 0.25s ease;
+  }
+  .width-wide #simple-view,
+  .width-wide #dates-view,
+  .width-wide #done-view { max-width: calc(50% + 360px); }
+  .width-normal .col-view { max-width: 1200px; }
+  .width-wide .col-view { max-width: calc(50% + 600px); }
+  .width-normal #year-view { max-width: 1248px; }
+  .width-wide #year-view { max-width: calc(50% + 624px); }
+  .width-full #simple-view,
+  .width-full #dates-view,
+  .width-full #done-view,
+  .width-full .col-view,
+  .width-full #year-view { max-width: 100%; }
+
+  /* Week: the to schedule column matches past days */
+  .day-col.later-col { background: var(--past-bg); }
+
+  /* Calendar headings sit halfway between their cell and the page
+     colour, in both modes */
+  .day-header,
+  .year-month-title { background: var(--head-tint); }
+  #month-view .month-head .day-header { background: none; }
+  #month-view .month-head {
+    background: linear-gradient(var(--head-tint), var(--head-tint)),
+      var(--bg);
+  }
+
+  /* Month: its own scroll area, set below the toolbar, rounded */
+  #month-view {
+    height: calc(100% - 48px);
+    margin: 24px auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Month and year cells grow to fit their tasks, keeping the same
+     space below the last task as above the first */
+  #month-view .day-tasks { flex: 1 0 auto; }
+  .year-month-card { max-height: none; }
+  .year-month-tasks {
+    flex: 1 0 auto;
+    overflow-y: visible;
+  }
+
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
-<div id="app" class="t-dark size-m">
+<div id="app" class="t-dark size-m width-normal">
   <div id="toolbar">
+    <a id="home-link" href="../index.html"
+      title="Back to toolkit">&lsaquo; Toolkit</a>
     <div id="nav-controls" class="hidden">
       <button id="prev-nav">&larr;</button>
       <button id="today-btn">Today</button>
@@ -497,22 +807,24 @@
     </div>
     <div id="dropdown-controls">
       <div class="dropdown" id="dd-style">
-        <div class="dropdown-btn">View</div>
+        <div class="dropdown-btn">Week</div>
         <div class="dropdown-menu">
           <div class="dropdown-item"
             data-value="simple">Simple</div>
           <div class="dropdown-item"
-            data-value="toggle">Toggle</div>
+            data-value="dates">Dates</div>
           <div class="dropdown-item active"
             data-value="weekly">Week</div>
           <div class="dropdown-item"
             data-value="month">Month</div>
           <div class="dropdown-item"
             data-value="year">Year</div>
+          <div class="dropdown-item"
+            data-value="done">Done</div>
         </div>
       </div>
       <div class="dropdown" id="dd-theme">
-        <div class="dropdown-btn">Theme</div>
+        <div class="dropdown-btn">Dark</div>
         <div class="dropdown-menu">
           <div class="dropdown-item active"
             data-value="t-dark">Dark</div>
@@ -521,7 +833,7 @@
         </div>
       </div>
       <div class="dropdown" id="dd-size">
-        <div class="dropdown-btn">Size</div>
+        <div class="dropdown-btn">Medium</div>
         <div class="dropdown-menu">
           <div class="dropdown-item"
             data-value="size-s">Small</div>
@@ -529,6 +841,17 @@
             data-value="size-m">Medium</div>
           <div class="dropdown-item"
             data-value="size-l">Large</div>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-width">
+        <div class="dropdown-btn">Normal</div>
+        <div class="dropdown-menu">
+          <div class="dropdown-item active"
+            data-value="width-normal">Normal</div>
+          <div class="dropdown-item"
+            data-value="width-wide">Wide</div>
+          <div class="dropdown-item"
+            data-value="width-full">Full</div>
         </div>
       </div>
     </div>
@@ -540,13 +863,14 @@
         data-list="simple"></div>
     </div>
 
-    <div id="toggle-view" class="hidden"></div>
+    <div id="dates-view" class="hidden"></div>
 
     <div id="weekly-view"
       class="col-view hidden"></div>
     <div id="month-view"
       class="col-view hidden"></div>
     <div id="year-view" class="hidden"></div>
+    <div id="done-view" class="hidden"></div>
   </div>
 </div>
 
@@ -555,7 +879,11 @@
   const STORAGE_KEY = "todo-data";
   const THEME_KEY   = "todo-theme";
   const VIEW_KEY    = "todo-view";
-  const SIZE_KEY    = "todo-size";
+  const SIZES_KEY   = "todo-sizes";
+  const WIDTHS_KEY  = "todo-widths";
+
+  // Drop the old shared size setting
+  localStorage.removeItem("todo-size");
   const WEEK_KEY    = "todo-week-offset";
   const MONTH_KEY   = "todo-month-offset";
   const YEAR_KEY    = "todo-year-offset";
@@ -588,15 +916,25 @@
       .forEach(d => d.classList.remove("open"));
   });
 
+  // Add a class to the page briefly, then run an optional follow-up
+  function animate(cls, ms, after) {
+    app.classList.add(cls);
+    setTimeout(() => {
+      app.classList.remove(cls);
+      if (after) after();
+    }, ms);
+  }
+
+  // Mark the chosen option and show it on the button
   function setDropdownActive(ddId, value) {
-    document.getElementById(ddId)
-      .querySelectorAll(".dropdown-item")
-      .forEach(item => {
-        item.classList.toggle(
-          "active",
-          item.dataset.value === value
-        );
-      });
+    const dd = document.getElementById(ddId);
+    dd.querySelectorAll(".dropdown-item").forEach(item => {
+      const on = item.dataset.value === value;
+      item.classList.toggle("active", on);
+      if (on) {
+        dd.querySelector(".dropdown-btn").textContent = item.textContent;
+      }
+    });
   }
 
   document.querySelectorAll(
@@ -618,6 +956,7 @@
   ).forEach(item => {
     item.addEventListener("click", e => {
       e.stopPropagation();
+      animate("theme-anim", 300);
       applyTheme(item.dataset.value);
       setDropdownActive("dd-theme", currentTheme);
       document.getElementById("dd-theme")
@@ -626,14 +965,43 @@
   });
 
   document.querySelectorAll(
+    "#dd-width .dropdown-item"
+  ).forEach(item => {
+    item.addEventListener("click", e => {
+      e.stopPropagation();
+      saveViewWidth(currentView, item.dataset.value);
+      applyWidth(item.dataset.value);
+      document.getElementById("dd-width").classList.remove("open");
+
+      // Refit text boxes once the width change settles
+      setTimeout(() => {
+        document.querySelectorAll("textarea.task-input").forEach(t => {
+          t.style.height = "auto";
+          t.style.height = t.scrollHeight + "px";
+        });
+      }, 270);
+    });
+  });
+
+  document.querySelectorAll(
     "#dd-size .dropdown-item"
   ).forEach(item => {
     item.addEventListener("click", e => {
       e.stopPropagation();
-      applySize(item.dataset.value);
-      setDropdownActive("dd-size", currentSize);
+      saveViewSize(currentView, item.dataset.value);
       document.getElementById("dd-size")
         .classList.remove("open");
+
+      // Let text boxes grow with the text, then fit them once done
+      const boxes = document.querySelectorAll("textarea.task-input");
+      boxes.forEach(t => { t.style.height = ""; });
+      animate("size-anim", 220, () => {
+        boxes.forEach(t => {
+          t.style.height = "auto";
+          t.style.height = t.scrollHeight + "px";
+        });
+      });
+      applySize(item.dataset.value);
     });
   });
 
@@ -666,12 +1034,40 @@
       delete data.toggle;
     }
     if (!data.toggleData) data.toggleData = {};
+
+    // Move old toggle sections into the simple list, once
+    if (!data.datesMigrated) {
+      const moved = [];
+      Object.keys(data.toggleData).forEach(id => {
+        data.toggleData[id].forEach(t => {
+          if (t.text === "") return;
+          if (id === "today" && !t.done && !firstToken(t.text)) {
+            t.text += " @today";
+          }
+          moved.push(t);
+        });
+      });
+      data.simple = data.simple.filter(t => t.text !== "").concat(moved);
+      data.toggleData = {};
+      data.datesMigrated = true;
+    }
+    if (!data.dateSections) data.dateSections = [];
+
+    // Give every task a written day for its relative dates
+    allLists(data).forEach(([, list]) => {
+      list.forEach(t => { if (t.text && !t.anchorAt) stampAnchor(t); });
+    });
     return data;
   }
 
+  // Save, leaving out empty day lists so scrolling adds nothing
   function saveData(data) {
+    const weekly = {};
+    Object.keys(data.weekly).forEach(k => {
+      if (data.weekly[k].length) weekly[k] = data.weekly[k];
+    });
     localStorage.setItem(
-      STORAGE_KEY, JSON.stringify(data)
+      STORAGE_KEY, JSON.stringify(Object.assign({}, data, { weekly }))
     );
   }
 
@@ -757,10 +1153,9 @@
       && d.getFullYear() === t.getFullYear();
   }
 
+  // Month as its three-letter name and year, such as "Oct 2026"
   function fmtMonth(d) {
-    return d.toLocaleDateString("en-AU", {
-      month: "short", year: "numeric"
-    });
+    return MONTH_NAMES[d.getMonth()].slice(0, 3) + " " + d.getFullYear();
   }
 
   const DAY_NAMES = [
@@ -841,6 +1236,7 @@
   function handleDrop(e, targetListKey, targetIndex) {
     e.preventDefault();
     if (!dragData) return;
+    if (dragData.mirror) return handleZoneDrop(e, targetListKey);
 
     const data = loadData();
     const srcList = getList(data, dragData.listKey);
@@ -870,6 +1266,7 @@
     }
 
     destList.splice(insertAt, 0, task);
+    fitToList(task, targetListKey, dragData.listKey);
 
     setList(data, dragData.listKey, srcList);
     setList(data, targetListKey, destList);
@@ -884,6 +1281,16 @@
     if (!dragData) return;
 
     const data = loadData();
+
+    // A task shown here because of its date: change its date instead
+    if (dragData.mirror) {
+      const task = getList(data, dragData.listKey)[dragData.index];
+      if (task) setDateToken(task, dateTokenFor(listKey));
+      saveData(data);
+      handleDragEnd(e);
+      renderCurrentView();
+      return;
+    }
     const srcList = getList(data, dragData.listKey);
     const srcIdx = dragData.index;
 
@@ -902,6 +1309,7 @@
       ? destList.length - 1
       : destList.length;
     destList.splice(insertAt, 0, task);
+    if (listKey !== dragData.listKey) fitToList(task, listKey, dragData.listKey);
 
     setList(data, dragData.listKey, srcList);
     setList(data, listKey, destList);
@@ -911,27 +1319,262 @@
     renderCurrentView();
   }
 
+  // Six dots in two columns
+  const DRAG_ICON = '<svg width="6" height="10" viewBox="0 0 6 10">'
+    + '<circle cx="1" cy="1" r="1"/><circle cx="5" cy="1" r="1"/>'
+    + '<circle cx="1" cy="5" r="1"/><circle cx="5" cy="5" r="1"/>'
+    + '<circle cx="1" cy="9" r="1"/><circle cx="5" cy="9" r="1"/></svg>';
+
+  // Calendar lists hold their own date, so a dropped task drops its @date
+  function isCalendarList(key) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(key) || key.startsWith("_ym-");
+  }
+
+  function fitToList(task, listKey, fromKey) {
+    if (listKey !== fromKey && isCalendarList(listKey)) {
+      setDateToken(task, "");
+    }
+  }
+
+  // The @date matching a calendar list, or "" for undated lists
+  function dateTokenFor(listKey) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(listKey)) {
+      const d = keyToDate(listKey);
+      return "@" + d.getDate() + " " + MONTH_NAMES[d.getMonth()].slice(0, 3)
+        + " " + d.getFullYear();
+    }
+    if (listKey.startsWith("_ym-")) {
+      const [, y, m] = listKey.split("-");
+      return "@" + MONTH_NAMES[+m] + " " + y;
+    }
+    return "";
+  }
+
+  // Replace a task's first @date, add one, or remove it ("" token)
+  function setDateToken(task, token) {
+    DATE_PATTERN.lastIndex = 0;
+    const m = DATE_PATTERN.exec(task.text);
+    let text = m
+      ? task.text.slice(0, m.index) + token + task.text.slice(m.index + m[0].length)
+      : token ? task.text.trimEnd() + " " + token : task.text;
+    task.text = text.replace(/\s{2,}/g, " ").trim();
+    stampAnchor(task);
+  }
+
   // ---- Date highlighting ----
 
-  const DATE_PATTERN = new RegExp(
-    '@('
-    // Relative: @today, @tomorrow, @yesterday
-    + 'today|tomorrow|yesterday'
-    // Day names: @monday, @next tuesday
-    + '|(?:next\\s+)?(?:mon(?:day)?|tue(?:sday)?'
-    + '|wed(?:nesday)?|thu(?:rsday)?'
-    + '|fri(?:day)?|sat(?:urday)?|sun(?:day)?)'
+  // Month names, full or short, not followed by more letters
+  const MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?'
+    + '|apr(?:il)?|may|june?|july?|aug(?:ust)?'
+    + '|sep(?:t(?:ember)?)?|oct(?:ober)?'
+    + '|nov(?:ember)?|dec(?:ember)?)(?![a-z])';
+
+  // Weekday names, full or short, not followed by more letters
+  const WEEKDAY_RE = '(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?'
+    + '|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?![a-z])';
+
+  // One date or period, without the @
+  const DATE_CORE = '(?:'
+    // Relative days: today, tomorrow, yesterday
+    + '(?:today|tomorrow|yesterday)(?![a-z])'
+    // Relative periods: this week, next month
+    + '|(?:this|next)\\s+(?:week|month)(?![a-z])'
+    // Day names: monday, next tuesday
+    + '|(?:next\\s+)?' + WEEKDAY_RE
+    // DD Month YYYY or DD Month
+    + '|\\d{1,2}\\s+' + MONTH_RE + '(?:,?\\s+\\d{4})?'
     // Month DD, YYYY or Month DD
-    + '|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?'
-    + '|apr(?:il)?|may|jun(?:e)?|jul(?:y)?'
-    + '|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?'
-    + '|nov(?:ember)?|dec(?:ember)?)'
-    + '\\s+\\d{1,2}(?:,?\\s*\\d{4})?'
+    + '|' + MONTH_RE + '\\s+\\d{1,2}(?!\\d)(?:,?\\s*\\d{4})?'
     // DD/MM/YYYY or DD-MM-YYYY
     + '|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}'
-    + ')',
+    // A whole month: november, nov 2026
+    + '|' + MONTH_RE + '(?:\\s+\\d{4})?'
+    + ')';
+
+  // @ then a date or period, optionally "to" another one
+  const DATE_PATTERN = new RegExp(
+    '@' + DATE_CORE
+    + '(?:\\s*(?:–|—|-|to(?![a-z]))\\s*' + DATE_CORE + ')?',
     'gi'
   );
+
+  // Calendar dates that place a task in the calendar views
+  const MONTHS = [
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec"
+  ];
+  const FIXED_DATES = [
+    {
+      d: 1, m: 2, y: 3,
+      re: new RegExp(
+        '@(\\d{1,2})\\s+' + MONTH_RE + '(?:,?\\s+(\\d{4}))?', 'i'
+      )
+    },
+    {
+      d: 2, m: 1, y: 3,
+      re: new RegExp(
+        '@' + MONTH_RE + '\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?', 'i'
+      )
+    },
+    {
+      d: 1, m: 2, numeric: true, y: 3,
+      re: /@(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/
+    }
+  ];
+
+  // Read the first calendar date in a task, or null
+  function parseTaskDate(text) {
+    for (const f of FIXED_DATES) {
+      const x = f.re.exec(text || "");
+      if (!x) continue;
+      const day = +x[f.d];
+      const mon = f.numeric
+        ? +x[f.m] - 1
+        : MONTHS.indexOf(x[f.m].slice(0, 3).toLowerCase());
+      let yr = x[f.y] ? +x[f.y] : new Date().getFullYear();
+      if (yr < 100) yr += 2000;
+      const d = new Date(yr, mon, day);
+      if (d.getMonth() === mon && d.getDate() === day) return d;
+    }
+    return null;
+  }
+  // ---- Date ranges ----
+
+  function dayStart(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDays(d, n) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  }
+
+  // Monday of the week containing a day
+  function weekStart(d) {
+    const day = d.getDay();
+    return addDays(dayStart(d), day === 0 ? -6 : 1 - day);
+  }
+
+  function monthRange(y, m) {
+    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 0) };
+  }
+
+  function oneDay(d) {
+    return { start: d, end: d };
+  }
+
+  const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+  // A single date or period as a day range, relative to an anchor day
+  function parseOne(str, anchor) {
+    const s = str.trim().toLowerCase().replace(/\s+/g, " ");
+    const mon = name => MONTHS.indexOf(name.slice(0, 3));
+    let m;
+
+    if (s === "today") return oneDay(anchor);
+    if (s === "tomorrow") return oneDay(addDays(anchor, 1));
+    if (s === "yesterday") return oneDay(addDays(anchor, -1));
+    if ((m = s.match(/^(this|next) (week|month)$/))) {
+      const next = m[1] === "next";
+      if (m[2] === "week") {
+        const start = addDays(weekStart(anchor), next ? 7 : 0);
+        return { start, end: addDays(start, 6) };
+      }
+      return monthRange(
+        anchor.getFullYear(), anchor.getMonth() + (next ? 1 : 0)
+      );
+    }
+
+    // Day names: the next one on or after the anchor; "next" means next week
+    if ((m = s.match(new RegExp('^(next )?' + WEEKDAY_RE + '$')))) {
+      const wd = WEEKDAYS.indexOf(s.replace("next ", "").slice(0, 3));
+      if (m[1]) {
+        const start = addDays(weekStart(anchor), 7);
+        return oneDay(addDays(start, (wd + 6) % 7));
+      }
+      return oneDay(addDays(anchor, (wd - anchor.getDay() + 7) % 7));
+    }
+
+    // Fixed dates; with no year, a date long past means next year
+    let day, month, year;
+    if ((m = s.match(new RegExp(
+      '^(\\d{1,2}) ' + MONTH_RE + '(?:,? (\\d{4}))?$')))) {
+      [day, month, year] = [+m[1], mon(m[2]), m[3]];
+    } else if ((m = s.match(new RegExp(
+      '^' + MONTH_RE + ' (\\d{1,2})(?:,? ?(\\d{4}))?$')))) {
+      [day, month, year] = [+m[2], mon(m[1]), m[3]];
+    } else if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))) {
+      [day, month, year] = [+m[1], +m[2] - 1, m[3]];
+    } else if ((m = s.match(new RegExp('^' + MONTH_RE + '(?: (\\d{4}))?$')))) {
+      let y = m[2] ? +m[2] : anchor.getFullYear();
+      let r = monthRange(y, mon(m[1]));
+      if (!m[2] && r.end < anchor) r = monthRange(y + 1, mon(m[1]));
+      return r;
+    } else {
+      return null;
+    }
+    let y = year ? +year : anchor.getFullYear();
+    if (y < 100) y += 2000;
+    let d = new Date(y, month, day);
+    if (d.getMonth() !== month || d.getDate() !== day) return null;
+    if (!year && d < addDays(anchor, -31)) d = new Date(y + 1, month, day);
+    return oneDay(d);
+  }
+
+  // A date, period, or "A to B" range as a day range
+  function parseSpec(str, anchor) {
+    const one = parseOne(str, anchor);
+    if (one) return one;
+    const parts = str.split(/\s*(?:–|—|\bto\b)\s*|\s+-\s+|-/i);
+    if (parts.length !== 2) return null;
+    const a = parseOne(parts[0], anchor), b = parseOne(parts[1], anchor);
+    if (!a || !b || b.end < a.start) return null;
+    return { start: a.start, end: b.end };
+  }
+
+  // The first date token in a task, in lower case, or ""
+  function firstToken(text) {
+    DATE_PATTERN.lastIndex = 0;
+    const m = DATE_PATTERN.exec(text || "");
+    return m ? m[0].toLowerCase() : "";
+  }
+
+  // The first date in some text that resolves, as a day range
+  function textRange(text, anchor) {
+    DATE_PATTERN.lastIndex = 0;
+    let m;
+    while ((m = DATE_PATTERN.exec(text || ""))) {
+      const r = parseSpec(m[0].slice(1), anchor);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  // A task's date: from its text, else from the calendar cell it is in
+  function taskRange(task, listKey) {
+    const anchor = dayStart(
+      task.anchorAt ? new Date(task.anchorAt) : new Date()
+    );
+    const r = textRange(task.text, anchor);
+    if (r) return r;
+    if (listKey && /^\d{4}-\d{2}-\d{2}$/.test(listKey)) {
+      return oneDay(keyToDate(listKey));
+    }
+    if (listKey && listKey.startsWith("_ym-")) {
+      const [, y, mm] = listKey.split("-");
+      return monthRange(+y, +mm);
+    }
+    return null;
+  }
+
+  // Note when a task's date was written, so relative dates stay put
+  function stampAnchor(task) {
+    const tok = firstToken(task.text);
+    if (tok !== task.anchorTok || !task.anchorAt) {
+      task.anchorTok = tok;
+      task.anchorAt = Date.now();
+    }
+  }
+
 
   function escapeHtml(str) {
     return str
@@ -947,15 +1590,57 @@
     let match;
     DATE_PATTERN.lastIndex = 0;
     while ((match = DATE_PATTERN.exec(text))) {
-      result += escapeHtml(
+      result += highlightTags(
         text.slice(lastIdx, match.index)
       );
       result += '<span class="date-token">'
         + escapeHtml(match[0]) + '</span>';
       lastIdx = match.index + match[0].length;
     }
-    result += escapeHtml(text.slice(lastIdx));
+    result += highlightTags(text.slice(lastIdx));
     return result;
+  }
+
+  // ---- Tags ----
+
+  // A # at the start or after a space, running to the next space
+  const TAG_PATTERN = /(^|\s)(#[^\s#]+)/g;
+
+  // Tags (#), and any word with an @ in it (names, emails, a lone @)
+  const MARK_PATTERN = /(^|\s)(#[^\s#]+|[^\s#]*@[^\s]*)/g;
+
+  // Drop punctuation that ends a sentence rather than the tag
+  function trimTag(tag) {
+    return tag.replace(/[.,;:!?)\]]+$/, "");
+  }
+
+  // Tint #tags; colour any other @word, such as a name
+  function highlightTags(seg) {
+    let out = "", last = 0, m;
+    MARK_PATTERN.lastIndex = 0;
+    while ((m = MARK_PATTERN.exec(seg))) {
+      const start = m.index + m[1].length;
+      const isTag = m[2][0] === "#";
+      const mark = isTag ? trimTag(m[2]) : m[2].replace(/[.,;:!?)\]]+$/, "") || m[2];
+      if (isTag && mark.length < 2) continue;
+      const cls = isTag ? "tag-token" : "mention-token";
+      out += escapeHtml(seg.slice(last, start))
+        + '<span class="' + cls + '">' + escapeHtml(mark) + '</span>';
+      last = start + mark.length;
+    }
+    return out + escapeHtml(seg.slice(last));
+  }
+
+  // Unique tags in a task, in the order written
+  function taskTags(text) {
+    const tags = [];
+    let m;
+    TAG_PATTERN.lastIndex = 0;
+    while ((m = TAG_PATTERN.exec(text || ""))) {
+      const tag = trimTag(m[2]);
+      if (tag.length > 1 && !tags.includes(tag)) tags.push(tag);
+    }
+    return tags;
   }
 
   // ---- Task element ----
@@ -969,19 +1654,54 @@
     div.className = "task"
       + (task.done ? " done" : "")
       + (indent > 0 ? " indent-" + indent : "");
+    if (opts.index !== undefined) div.dataset.index = opts.index;
 
-    // Drag from checkbox for non-empty tasks
-    if (task.text !== "" && opts.listKey) {
+    // Past its date and not ticked
+    const range = task.text && !task.done
+      ? taskRange(task, opts.srcKey || opts.listKey) : null;
+    if (range && range.end < dayStart(new Date())) {
+      div.classList.add("overdue");
+    }
+
+    // A new-task row in the dates view
+    if (opts.onCommit) {
+      div.classList.add("placeholder");
+      div.dataset.section = opts.section;
+    }
+
+    // Drag handle for reordering and moving tasks
+    let handle = null;
+    if (task.text !== "" && !opts.onCommit
+      && (opts.listKey || opts.dragSrc)) {
+      handle = document.createElement("span");
+      handle.className = "drag-handle";
+      handle.title = "Drag to move";
+      handle.innerHTML = DRAG_ICON;
+      handle.draggable = true;
+      handle.addEventListener("dragstart", e => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", "");
+        e.dataTransfer.setDragImage(div, 20, 12);
+        dragData = opts.listKey
+          ? { index: opts.index, listKey: opts.listKey }
+          : {
+            index: opts.dragIndex, listKey: opts.dragSrc, mirror: true,
+            section: opts.section, task
+          };
+        div.classList.add("dragging");
+      });
       div.addEventListener("dragend", handleDragEnd);
-      div.addEventListener("dragover", e =>
-        handleDragOver(e, div)
-      );
+    }
+
+    // Dropping onto a task places the dragged one above or below it
+    if (task.text !== "" && (opts.listKey || opts.onDropHere)) {
+      div.addEventListener("dragover", e => handleDragOver(e, div));
       div.addEventListener("drop", e => {
         const rect = div.getBoundingClientRect();
-        const mid = rect.top + rect.height / 2;
-        const dropIdx = e.clientY < mid
-          ? opts.index : opts.index + 1;
-        handleDrop(e, opts.listKey, dropIdx);
+        const before = e.clientY < rect.top + rect.height / 2;
+        e.stopPropagation();
+        if (opts.onDropHere) opts.onDropHere(e, task, before);
+        else handleDrop(e, opts.listKey, before ? opts.index : opts.index + 1);
       });
     }
 
@@ -989,25 +1709,15 @@
     cb.type = "checkbox";
     cb.checked = task.done;
 
-    if (task.text !== "" && opts.listKey) {
-      cb.draggable = true;
-      cb.style.cursor = "grab";
-      cb.addEventListener("dragstart", e => {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", "");
-        e.dataTransfer.setDragImage(div, 20, 12);
-        dragData = {
-          listKey: opts.listKey,
-          index: opts.index
-        };
-        div.classList.add("dragging");
-      });
-    }
-
     cb.addEventListener("change", () => {
       task.done = cb.checked;
+      if (task.done) task.doneAt = Date.now();
+      else delete task.doneAt;
       div.classList.toggle("done", task.done);
       onUpdate();
+
+      // Let the tick show before the task moves
+      if (opts.onDoneChange) setTimeout(opts.onDoneChange, 250);
     });
 
     const txt = document.createElement("textarea");
@@ -1031,66 +1741,41 @@
             3, (task.indent || 0) + 1
           );
         }
+        if (opts.noPlaceholder && task.text === "") {
+          pendingAdd = opts.listKey;
+        }
         onUpdate();
         renderCurrentView();
+
         // Refocus same task after re-render
         setTimeout(() => {
-          let container = null;
-          const cid = div.parentElement
-            ? div.parentElement.id
-              || div.parentElement.dataset.list
-            : null;
-          if (cid) {
-            container =
-              document.getElementById(cid)
-              || document.querySelector(
-                '[data-list="' + cid + '"]'
-              );
-          }
-          if (container && opts.index !== undefined) {
-            const inputs = container.querySelectorAll(
-              ".task textarea.task-input"
-            );
-            if (inputs[opts.index]) {
-              inputs[opts.index].focus();
-            }
-          }
+          const zone = zoneFor(opts.listKey);
+          const t = zone && zone.querySelector(
+            '.task[data-index="' + opts.index + '"] textarea'
+          );
+          if (t) t.focus();
         }, 10);
+        return;
+      }
+      if (e.key === "Enter" && opts.onCommit) {
+        e.preventDefault();
+        committedByEnter = true;
+        txt.blur();
         return;
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        const containerId =
-          div.parentElement
-            ? div.parentElement.id
-              || div.parentElement.dataset.list
-            : null;
+        if (opts.mirror) {
+          onUpdate();
+          txt.blur();
+          return;
+        }
+
+        // Calendar views add a blank task on Enter
+        if (opts.noPlaceholder) pendingAdd = opts.listKey;
         onUpdate();
         renderCurrentView();
-        setTimeout(() => {
-          // Find the container after re-render
-          let container = null;
-          if (containerId) {
-            container =
-              document.getElementById(containerId)
-              || document.querySelector(
-                '[data-list="' + containerId + '"]'
-              );
-          }
-          if (!container) {
-            container = document.querySelector(
-              '#content .drop-zone:not(.hidden)'
-            );
-          }
-          if (container) {
-            const inputs = container.querySelectorAll(
-              ".task textarea.task-input"
-            );
-            if (inputs.length) {
-              inputs[inputs.length - 1].focus();
-            }
-          }
-        }, 10);
+        focusLast(opts.listKey);
       }
       if (e.key === "Backspace"
         && txt.value === ""
@@ -1113,12 +1798,15 @@
     const highlight = document.createElement("div");
     highlight.className = "task-highlight";
 
+    // Tags echoed at the right, kept in step with the text
+    const tagBox = document.createElement("span");
+    tagBox.className = "task-tags";
+
     function syncHighlight() {
       highlight.innerHTML = highlightDates(txt.value);
-      const cs = getComputedStyle(txt);
-      highlight.style.font = cs.font;
-      highlight.style.padding = cs.padding;
-      highlight.style.lineHeight = cs.lineHeight;
+      tagBox.innerHTML = taskTags(txt.value)
+        .map(t => '<span class="tag-chip">' + escapeHtml(t) + '</span>')
+        .join("");
     }
 
     function autoResize() {
@@ -1126,8 +1814,18 @@
       txt.style.height = txt.scrollHeight + "px";
     }
 
+    // New-task rows save when you press Enter or leave them
+    let committedByEnter = false;
+    if (opts.onCommit) {
+      txt.addEventListener("blur", () => {
+        opts.onCommit(committedByEnter);
+        committedByEnter = false;
+      });
+    }
+
     txt.addEventListener("input", () => {
       task.text = txt.value;
+      if (task.text) stampAnchor(task);
       autoResize();
       syncHighlight();
       onUpdate();
@@ -1141,8 +1839,10 @@
       syncHighlight();
     }, 0);
 
+    if (handle) div.appendChild(handle);
     div.appendChild(cb);
     div.appendChild(wrap);
+    div.appendChild(tagBox);
     div.appendChild(del);
     return div;
   }
@@ -1163,38 +1863,113 @@
       e => handleZoneDrop(e, listKey));
   }
 
-  function setupClickToAdd(
-    clickEl, tasksEl, data, listKey, renderFn
-  ) {
+  // ---- Blank tasks in calendar views ----
+
+  // List waiting for a blank task on the next render
+  let pendingAdd = null;
+
+  // Find a list's drop zone in the visible view
+  function zoneFor(listKey) {
+    return views[currentView].querySelector(
+      '.drop-zone[data-list="' + listKey + '"]'
+    );
+  }
+
+  // Focus the last task in a list after re-render
+  function focusLast(listKey) {
+    setTimeout(() => {
+      pendingAdd = null;
+      const zone = zoneFor(listKey);
+      if (!zone) return;
+      const inputs = zone.querySelectorAll("textarea.task-input");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 10);
+  }
+
+  // Drop blank tasks, then add one where the user asked for it
+  function prepList(data, listKey) {
+    const list = getList(data, listKey)
+      .filter(t => t.text !== "");
+    if (pendingAdd === listKey) {
+      list.push({ text: "", done: false, indent: 0 });
+    }
+    setList(data, listKey, list);
+    return list;
+  }
+
+  // Every stored list as [list key, tasks]
+  function allLists(data) {
+    const lists = [["simple", data.simple]];
+    Object.keys(data.toggleData).forEach(id => {
+      lists.push(["toggle-" + id, data.toggleData[id]]);
+    });
+    Object.keys(data.weekly).forEach(k => {
+      lists.push([k, data.weekly[k]]);
+    });
+    return lists;
+  }
+
+  // Group dated tasks by day key and year-view month key
+  function collectDated(data) {
+    const byDay = {}, byMonth = {};
+    allLists(data).forEach(([src, list]) => {
+      list.forEach(task => {
+        if (!task.text) return;
+        const anchor = dayStart(
+          task.anchorAt ? new Date(task.anchorAt) : new Date()
+        );
+        const r = textRange(task.text, anchor);
+        if (!r) return;
+        const d = r.start;
+        const mk = "_ym-" + d.getFullYear() + "-"
+          + String(d.getMonth()).padStart(2, "0");
+
+        // Single days show in their day cell; anything within a month
+        // shows on that month's card
+        if (+r.start === +r.end) {
+          const dk = dateKey(d);
+          if (src !== dk) (byDay[dk] = byDay[dk] || []).push({ src, task });
+        }
+        if (r.end.getMonth() === d.getMonth()
+          && r.end.getFullYear() === d.getFullYear() && src !== mk) {
+          (byMonth[mk] = byMonth[mk] || []).push({ src, task });
+        }
+      });
+    });
+    return { byDay, byMonth };
+  }
+
+  // Show tasks dated from other lists at the top of a cell
+  function addMirrors(el, data, items, renderFn) {
+    (items || []).forEach(({ src, task }) => {
+      const tEl = createTaskEl(
+        task,
+        () => saveData(data),
+        t => {
+          setList(data, src, getList(data, src).filter(x => x !== t));
+          saveData(data);
+          renderFn();
+        },
+        {
+          dragIndex: getList(data, src).indexOf(task), dragSrc: src,
+          mirror: true, noPlaceholder: true, onDoneChange: renderFn
+        }
+      );
+      tEl.classList.add("mirrored");
+      tEl.title = "Dated task, also listed elsewhere";
+      el.appendChild(tEl);
+    });
+  }
+
+  // Click an empty part of a cell to add a task
+  function setupClickToAdd(clickEl, listKey, renderFn) {
     clickEl.addEventListener("click", e => {
       if (e.target.closest(
         ".task, .delete-btn, button"
       )) return;
-      const list = getList(data, listKey);
-      if (list.length
-        && list[list.length - 1].text === "") {
-        const inputs = tasksEl.querySelectorAll(
-          ".task textarea.task-input"
-        );
-        if (inputs.length) {
-          inputs[inputs.length - 1].focus();
-        }
-        return;
-      }
-      list.push({
-        text: "", done: false, indent: 0
-      });
-      setList(data, listKey, list);
-      saveData(data);
+      pendingAdd = listKey;
       renderFn();
-      setTimeout(() => {
-        const inputs = tasksEl.querySelectorAll(
-          ".task textarea.task-input"
-        );
-        if (inputs.length) {
-          inputs[inputs.length - 1].focus();
-        }
-      }, 10);
+      focusLast(listKey);
     });
   }
 
@@ -1240,140 +2015,472 @@
     );
   }
 
-  function renderToggle() {
-    const data = loadData();
-    const sections = loadToggleSections();
-    const tState = loadToggleState();
-    const el = document.getElementById("toggle-view");
-    el.innerHTML = "";
+  // ---- Dates ----
 
-    sections.forEach(sec => {
-      const listKey = "toggle-" + sec.id;
-      if (!data.toggleData[sec.id]) {
-        data.toggleData[sec.id] = [];
+  // Section to refocus after a re-render, set when a task is added
+  let datesRefocus = null;
+
+  // Built-in date sections, then added ones in date order
+  function dateSections(data) {
+    const t = dayStart(new Date());
+    const wk = weekStart(t);
+    const sections = [
+      { id: "today", name: "Today", range: oneDay(t), token: "@today" },
+      {
+        id: "tomorrow", name: "Tomorrow",
+        range: oneDay(addDays(t, 1)), token: "@tomorrow"
+      },
+      {
+        id: "this-week", name: "This week",
+        range: { start: wk, end: addDays(wk, 6) }, token: "@this week"
+      },
+      {
+        id: "next-week", name: "Next week",
+        range: { start: addDays(wk, 7), end: addDays(wk, 13) },
+        token: "@next week"
       }
-      ensureEmpty(data.toggleData[sec.id]);
+    ];
+    const added = data.dateSections
+      .map(c => ({
+        custom: true, id: c.id, name: "@" + c.spec,
+        range: parseSpec(c.spec, t), token: "@" + c.spec
+      }))
+      .filter(c => c.range)
+      .sort((a, b) => a.range.start - b.range.start);
+    return sections.concat(added);
+  }
 
-      const sectionDiv = document.createElement("div");
-      sectionDiv.className = "toggle-section";
+  // Save a typed new task to the simple list, adding the section's date
+  function commitNew(data, temp, token, sectionId, byEnter) {
+    const text = temp.text.trim();
+    if (!text) return;
+    const task = {
+      done: false, indent: 0,
+      text: token && !firstToken(text) ? text + " " + token : text
+    };
+    stampAnchor(task);
+    data.simple = data.simple.filter(t => t.text !== "");
+    data.simple.push(task);
+    saveData(data);
 
-      // Header
-      const header = document.createElement("div");
-      header.className = "toggle-header";
+    // Keep typing in the same section after Enter; otherwise follow
+    // the cursor to whichever new-task row was clicked
+    setTimeout(() => {
+      const a = document.activeElement;
+      const row = a && a.closest && a.closest(".task.placeholder");
+      datesRefocus = byEnter ? sectionId : row ? row.dataset.section : null;
+      renderDates();
+    }, 0);
+  }
 
-      const isOpen = tState[sec.id] !== false;
+  // Drop a dragged task into a dates section, above or below a task
+  function dropInSection(e, data, sec, items, target, before) {
+    e.preventDefault();
+    e.stopPropagation();
+    const drag = dragData;
+    handleDragEnd(e);
+    if (!drag || !drag.task || sec.id === "overdue") return;
+    const task = drag.task;
 
-      const arrow = document.createElement("span");
-      arrow.className = "toggle-arrow"
-        + (isOpen ? "" : " collapsed");
-      arrow.textContent = "\u25BC";
-      arrow.addEventListener("click", e => {
+    // Moving to another section changes the task's date or tick
+    if (drag.section !== sec.id) {
+      if (sec.id === "_done") {
+        task.done = true;
+        task.doneAt = Date.now();
+      } else {
+        task.done = false;
+        delete task.doneAt;
+        setDateToken(task, sec.id === "to-schedule" ? "" : sec.token);
+
+        // A calendar task takes its new date from the text instead
+        if (isCalendarList(drag.listKey)) {
+          setList(data, drag.listKey,
+            getList(data, drag.listKey).filter(t => t !== task));
+          data.simple = data.simple.filter(t => t.text !== "");
+          data.simple.push(task);
+        }
+      }
+    }
+
+    // Keep the dropped position within the section
+    if (sec.id !== "_done") {
+      const list = items.map(x => x.task).filter(t => t !== task);
+      const at = target && list.includes(target)
+        ? list.indexOf(target) + (before ? 0 : 1) : list.length;
+      list.splice(at, 0, task);
+      list.forEach((t, i) => { t.order = i; });
+    }
+    saveData(data);
+    renderDates();
+  }
+
+  // One collapsible section of the dates view
+  function buildSection(el, sec, items, data, tState, opts = {}) {
+    const open = tState[sec.id] !== false;
+    const section = document.createElement("div");
+    section.className = "toggle-section" + (opts.cls ? " " + opts.cls : "");
+
+    const header = document.createElement("div");
+    header.className = "toggle-header";
+    const arrow = document.createElement("span");
+    arrow.className = "toggle-arrow" + (open ? "" : " collapsed");
+    arrow.textContent = "▼";
+    const title = document.createElement("span");
+    title.className = "toggle-title";
+    title.textContent = sec.name + " (" + items.length + ")";
+    header.appendChild(arrow);
+    header.appendChild(title);
+
+    // Added dates and ranges can be removed; their tasks stay
+    if (sec.custom) {
+      const del = document.createElement("button");
+      del.className = "toggle-delete-btn";
+      del.textContent = "×";
+      del.title = "Remove this date or range";
+      del.addEventListener("click", e => {
         e.stopPropagation();
+        data.dateSections = data.dateSections.filter(c => c.id !== sec.id);
+        saveData(data);
+        renderDates();
+      });
+      header.appendChild(del);
+    }
+
+    const tasks = document.createElement("div");
+    tasks.className = "toggle-tasks drop-zone";
+    tasks.dataset.section = sec.id;
+    const drop = (e, target, before) =>
+      dropInSection(e, data, sec, items, target, before);
+
+    // Drop onto the section's tasks or its title (useful when closed)
+    if (sec.id !== "overdue") {
+      [tasks, header].forEach(z => {
+        z.addEventListener("dragover", handleZoneDragOver);
+        z.addEventListener("dragleave", handleZoneDragLeave);
+        z.addEventListener("drop", e => drop(e, null, false));
+      });
+    }
+
+    items.forEach(({ src, task }) => {
+      const tEl = createTaskEl(
+        task,
+        () => saveData(data),
+        t => {
+          setList(data, src, getList(data, src).filter(x => x !== t));
+          saveData(data);
+          renderDates();
+        },
+        {
+          dragIndex: getList(data, src).indexOf(task), dragSrc: src,
+          mirror: true, noPlaceholder: true, onDoneChange: renderDates,
+          onDropHere: sec.id === "overdue" ? null : drop,
+          section: sec.id, srcKey: src
+        }
+      );
+      tEl.title = "From " + sourceLabel(src);
+      if (opts.showDate) {
+        const r = taskRange(task, src);
+        if (r && +r.start === +r.end) addSource(tEl, fmtDay(r.start, false));
+      }
+      tasks.appendChild(tEl);
+    });
+
+    // A row for typing a new task into this section
+    if (opts.addable) {
+      const temp = { done: false, indent: 0, text: "" };
+      tasks.appendChild(createTaskEl(
+        temp, () => {}, () => {},
+        {
+          onCommit: byEnter => commitNew(
+            data, temp, sec.token, sec.id, byEnter
+          ),
+          section: sec.id
+        }
+      ));
+    }
+
+    const body = document.createElement("div");
+    body.className = "toggle-body" + (open ? "" : " collapsed");
+    body.appendChild(tasks);
+
+    // Open or close in place so the change animates
+    [arrow, title].forEach(btn => {
+      btn.addEventListener("click", () => {
         const st = loadToggleState();
         st[sec.id] = !(st[sec.id] !== false);
         saveToggleState(st);
-        renderToggle();
+        arrow.classList.toggle("collapsed", !st[sec.id]);
+        body.classList.toggle("collapsed", !st[sec.id]);
       });
-
-      const nameInput = document.createElement("input");
-      nameInput.type = "text";
-      nameInput.className = "toggle-name-input";
-      nameInput.value = sec.name;
-      nameInput.addEventListener("input", () => {
-        sec.name = nameInput.value;
-        saveToggleSections(sections);
-      });
-      nameInput.addEventListener("keydown", e => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          nameInput.blur();
-        }
-      });
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "toggle-delete-btn";
-      delBtn.textContent = "\u00d7";
-      delBtn.addEventListener("click", e => {
-        e.stopPropagation();
-        if (sections.length <= 1) return;
-        const newSections = sections.filter(
-          s => s.id !== sec.id
-        );
-        saveToggleSections(newSections);
-        delete data.toggleData[sec.id];
-        saveData(data);
-        renderToggle();
-      });
-
-      header.appendChild(arrow);
-      header.appendChild(nameInput);
-      if (sections.length > 1) {
-        header.appendChild(delBtn);
-      }
-
-      // Tasks
-      const tasksDiv = document.createElement("div");
-      tasksDiv.className = "toggle-tasks drop-zone"
-        + (isOpen ? "" : " collapsed");
-      tasksDiv.dataset.list = listKey;
-      tasksDiv.id = "toggle-" + sec.id;
-
-      data.toggleData[sec.id].forEach((task, i) => {
-        tasksDiv.appendChild(createTaskEl(
-          task,
-          () => saveData(data),
-          t => {
-            data.toggleData[sec.id] =
-              data.toggleData[sec.id]
-                .filter(x => x !== t);
-            saveData(data);
-            renderToggle();
-          },
-          { listKey, index: i }
-        ));
-      });
-
-      setupDropZone(tasksDiv, listKey);
-
-      sectionDiv.appendChild(header);
-      sectionDiv.appendChild(tasksDiv);
-      el.appendChild(sectionDiv);
     });
 
-    // Add section button
-    const addBtn = document.createElement("button");
-    addBtn.className = "add-section-btn";
-    addBtn.textContent = "+ Add section";
-    addBtn.addEventListener("click", () => {
-      const newId = "sec_" + Date.now();
-      sections.push({
-        id: newId, name: "New section"
-      });
-      saveToggleSections(sections);
-      data.toggleData[newId] = [];
-      saveData(data);
-      renderToggle();
-      // Focus the new section's name input
-      setTimeout(() => {
-        const inputs = el.querySelectorAll(
-          ".toggle-name-input"
-        );
-        if (inputs.length) {
-          const last = inputs[inputs.length - 1];
-          last.focus();
-          last.select();
-        }
-      }, 10);
-    });
-    el.appendChild(addBtn);
+    section.appendChild(header);
+    section.appendChild(body);
+    el.appendChild(section);
+  }
 
+  // Button that turns into a box for typing a new date or range
+  function buildAddRange(el, data) {
+    const btn = document.createElement("button");
+    btn.className = "add-section-btn";
+    btn.textContent = "+ Add date or range";
+    btn.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.className = "add-range-input";
+      input.placeholder = "e.g. friday, november, 1 nov to 7 nov";
+      btn.replaceWith(input);
+      input.focus();
+
+      const finish = save => {
+        const spec = input.value.trim().replace(/^@/, "");
+        if (save && spec) {
+          if (!parseSpec(spec, dayStart(new Date()))) {
+            input.classList.add("invalid");
+            input.title = "Try a day, month, or range such as 1 nov to 7 nov";
+            return;
+          }
+          data.dateSections.push({ id: "d_" + Date.now(), spec });
+          saveData(data);
+        }
+        renderDates();
+      };
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") finish(true);
+        if (e.key === "Escape") finish(false);
+      });
+      input.addEventListener("input", () => {
+        input.classList.remove("invalid");
+      });
+      input.addEventListener("blur", () => {
+        if (!input.value.trim()) renderDates();
+      });
+    });
+    el.appendChild(btn);
+  }
+
+  function renderDates() {
+    const data = loadData();
+    const tState = loadToggleState();
+    const el = document.getElementById("dates-view");
+    el.innerHTML = "";
+
+    const today = dayStart(new Date());
+    const sections = dateSections(data);
+    const buckets = {};
+    sections.forEach(sec => { buckets[sec.id] = []; });
+    const overdue = [], toSchedule = [], done = [];
+
+    // Each task goes in the first section that holds its date
+    allLists(data).forEach(([src, list]) => {
+      list.forEach(task => {
+        if (task.text === "") return;
+        if (task.done) {
+          done.push({ src, task });
+          return;
+        }
+        const r = taskRange(task, src);
+        if (!r) {
+          if (src === "simple" || src === "_later") {
+            toSchedule.push({ src, task });
+          }
+          return;
+        }
+        if (r.end < today) {
+          overdue.push({ src, task, r });
+          return;
+        }
+        const sec = sections.find(
+          s => r.start >= s.range.start && r.end <= s.range.end
+        ) || sections.find(
+          s => r.start <= s.range.end && r.end >= s.range.start
+        );
+        if (sec) buckets[sec.id].push({ src, task, r });
+      });
+    });
+    const byDate = (a, b) => a.r.start - b.r.start;
+    const byOrder = (a, b) => (a.task.order ?? 1e9) - (b.task.order ?? 1e9)
+      || (a.r && b.r ? a.r.start - b.r.start : 0);
+
+    // Overdue shows only when it has tasks
+    if (overdue.length) {
+      buildSection(el, { id: "overdue", name: "Overdue" },
+        overdue.sort(byDate), data, tState, { showDate: true });
+    }
+    sections.forEach(sec => {
+      buildSection(el, sec, buckets[sec.id].sort(byOrder), data, tState,
+        { addable: true, showDate: sec.range.start < sec.range.end });
+    });
+    buildAddRange(el, data);
+    buildSection(el, { id: "to-schedule", name: "To schedule", token: "" },
+      toSchedule.sort(byOrder), data, tState, { addable: true });
+    buildSection(el, { id: "_done", name: "Done" },
+      done.sort(byDoneAt), data, tState, { cls: "toggle-done" });
+
+    // Return to the new-task row the user was typing in
+    if (datesRefocus) {
+      const row = el.querySelector(
+        '.task.placeholder[data-section="' + datesRefocus + '"] textarea'
+      );
+      datesRefocus = null;
+      if (row) row.focus();
+    }
     saveData(data);
+  }
+
+  // ---- Done ----
+
+  // A ticked task with text
+  function isDone(task) {
+    return task.done && task.text !== "";
+  }
+
+  // Most recently ticked first; older ticks without a time last
+  function byDoneAt(a, b) {
+    return (b.task.doneAt || 0) - (a.task.doneAt || 0);
+  }
+
+  // Turn a stored day key back into its local date
+  function keyToDate(key) {
+    const [y, m, d] = key.split("-").map(Number);
+    for (const off of [0, 1, -1]) {
+      const c = new Date(y, m - 1, d + off);
+      if (dateKey(c) === key) return c;
+    }
+    return new Date(y, m - 1, d);
+  }
+
+  // Short name for the list a task lives in
+  function sourceLabel(src) {
+    if (src === "simple") return "Simple";
+    if (src === "_later") return "Later";
+    if (src.startsWith("toggle-")) {
+      const sec = loadToggleSections()
+        .find(s => "toggle-" + s.id === src);
+      return sec ? sec.name : "Toggle";
+    }
+    if (src.startsWith("_ym-")) {
+      const [, y, m] = src.split("-");
+      return MONTH_NAMES[+m].slice(0, 3) + " " + y;
+    }
+    return fmtDay(keyToDate(src), false);
+  }
+
+  // Date as "wed 28 oct", optionally with the year
+  function fmtDay(d, withYear) {
+    const part = o => d.toLocaleDateString("en-AU", o);
+    return part({ weekday: "short" }) + " " + d.getDate() + " "
+      + MONTH_NAMES[d.getMonth()].slice(0, 3)
+      + (withYear ? " " + d.getFullYear() : "");
+  }
+
+  // Add the source label before the delete button
+  function addSource(tEl, label) {
+    const span = document.createElement("span");
+    span.className = "task-source";
+    span.textContent = label;
+    tEl.insertBefore(span, tEl.lastChild);
+  }
+
+  // Toggle title for the day a task was ticked
+  function doneDayLabel(ts) {
+    if (!ts) return "Earlier";
+    const d = new Date(ts);
+    return "@" + fmtDay(d, d.getFullYear() !== new Date().getFullYear());
+  }
+
+  const DONE_SEC_KEY = "todo-done-sections";
+
+  function loadDoneState() {
+    try {
+      return JSON.parse(localStorage.getItem(DONE_SEC_KEY)) || {};
+    } catch { return {}; }
+  }
+
+  function renderDone() {
+    const data = loadData();
+    const el = document.getElementById("done-view");
+    el.innerHTML = "";
+
+    const items = [];
+    allLists(data).forEach(([src, list]) => {
+      list.forEach(task => {
+        if (isDone(task)) items.push({ src, task });
+      });
+    });
+    items.sort(byDoneAt);
+
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "done-empty";
+      empty.textContent = "No completed tasks yet.";
+      el.appendChild(empty);
+      return;
+    }
+
+    // One toggle per day ticked, most recent first
+    const dState = loadDoneState();
+    let group = null, groupEl = null;
+    items.forEach(({ src, task }) => {
+      const label = doneDayLabel(task.doneAt);
+      if (label !== group) {
+        group = label;
+        const open = dState[label] !== false;
+        const section = document.createElement("div");
+        section.className = "toggle-section";
+
+        const header = document.createElement("div");
+        header.className = "toggle-header";
+        const arrow = document.createElement("span");
+        arrow.className = "toggle-arrow" + (open ? "" : " collapsed");
+        arrow.textContent = "\u25BC";
+        const title = document.createElement("span");
+        title.className = "toggle-title";
+        title.textContent = label;
+        header.appendChild(arrow);
+        header.appendChild(title);
+
+        groupEl = document.createElement("div");
+        groupEl.className = "toggle-tasks";
+        const body = document.createElement("div");
+        body.className = "toggle-body" + (open ? "" : " collapsed");
+        body.appendChild(groupEl);
+
+        // Open or close in place so the change animates
+        const key = label;
+        [arrow, title].forEach(btn => {
+          btn.addEventListener("click", () => {
+            const st = loadDoneState();
+            st[key] = !(st[key] !== false);
+            localStorage.setItem(DONE_SEC_KEY, JSON.stringify(st));
+            arrow.classList.toggle("collapsed", !st[key]);
+            body.classList.toggle("collapsed", !st[key]);
+          });
+        });
+
+        section.appendChild(header);
+        section.appendChild(body);
+        el.appendChild(section);
+      }
+      const tEl = createTaskEl(
+        task,
+        () => saveData(data),
+        t => {
+          setList(data, src, getList(data, src).filter(x => x !== t));
+          saveData(data);
+          renderDone();
+        },
+        { mirror: true, noPlaceholder: true, onDoneChange: renderDone }
+      );
+      tEl.title = "From " + sourceLabel(src);
+      groupEl.appendChild(tEl);
+    });
   }
 
   // ---- Week ----
 
   function renderWeekly() {
     const data = loadData();
+    const dated = collectDated(data);
     const el = document.getElementById("weekly-view");
     el.innerHTML = "";
 
@@ -1412,10 +2519,8 @@
       tasks.className = "day-tasks drop-zone";
       tasks.dataset.list = key;
 
-      // Only render tasks with content
-      data.weekly[key].filter(
-        t => t.text !== ""
-      ).forEach((task, ti) => {
+      addMirrors(tasks, data, dated.byDay[key], renderWeekly);
+      prepList(data, key).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
           () => saveData(data),
@@ -1434,31 +2539,37 @@
 
       col.appendChild(header);
       col.appendChild(tasks);
-      setupClickToAdd(
-        col, tasks, data, key, renderWeekly
-      );
+      setupClickToAdd(col, key, renderWeekly);
       el.appendChild(col);
     }
 
-    // Later
+    // To schedule: undated tasks from the simple list and this column
     const lk = "_later";
     if (!data.weekly[lk]) data.weekly[lk] = [];
 
     const laterCol = document.createElement("div");
-    laterCol.className = "day-col";
+    laterCol.className = "day-col later-col";
 
     const laterH = document.createElement("div");
     laterH.className = "day-header";
-    laterH.innerHTML =
-      '<div class="day-name">Later</div>';
+    // A blank date line keeps this heading as tall as the others
+    laterH.innerHTML = '<div class="day-name">To schedule</div>'
+      + '<div class="day-date">&nbsp;</div>';
 
     const laterT = document.createElement("div");
     laterT.className = "day-tasks drop-zone";
     laterT.dataset.list = lk;
 
-    data.weekly[lk].filter(
-      t => t.text !== ""
-    ).forEach((task, ti) => {
+    // Undated simple-list tasks show here too; dragging one to a day
+    // gives it that date
+    const undated = data.simple
+      .filter(t => t.text && !t.done && !taskRange(t, "simple"))
+      .map(task => ({ src: "simple", task }));
+    addMirrors(laterT, data, undated, renderWeekly);
+
+    // Ticked tasks leave this column, as in the dates view
+    prepList(data, lk).forEach((task, ti) => {
+      if (isDone(task)) return;
       laterT.appendChild(createTaskEl(
         task,
         () => saveData(data),
@@ -1468,7 +2579,7 @@
           saveData(data);
           renderWeekly();
         },
-        { noPlaceholder: true,
+        { noPlaceholder: true, onDoneChange: renderWeekly,
           listKey: lk, index: ti }
       ));
     });
@@ -1477,9 +2588,7 @@
 
     laterCol.appendChild(laterH);
     laterCol.appendChild(laterT);
-    setupClickToAdd(
-      laterCol, laterT, data, lk, renderWeekly
-    );
+    setupClickToAdd(laterCol, lk, renderWeekly);
     el.appendChild(laterCol);
 
     saveData(data);
@@ -1494,81 +2603,68 @@
     );
   }
 
+  // Rendered span of weeks, and whether to jump to the chosen month
+  let monthFrom = null, monthWeeks = 0, monthJump = true;
+  let monthBusy = false;
+
+  // Move the month view to a month (or today's week) and show it
+  function jumpToMonth() {
+    monthJump = true;
+    renderMonth();
+  }
+
   function renderMonth() {
     const data = loadData();
+    const dated = collectDated(data);
     const el = document.getElementById("month-view");
-    el.innerHTML = "";
+    const keepTop = el.scrollTop;
 
-    const first = getMonthStart(monthOffset);
-    navLabel.textContent = first.toLocaleDateString(
-      "en-AU", { month: "long", year: "numeric" }
-    );
-
-    // Calculate number of week rows first
-    const startDay = first.getDay();
-    const startOff = startDay === 0
-      ? -6 : 1 - startDay;
-    const gridStart = new Date(first);
-    gridStart.setDate(first.getDate() + startOff);
-    const thisMonth = first.getMonth();
-
-    let totalDays = 0;
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(gridStart);
-      d.setDate(gridStart.getDate() + i);
-      const inM = d.getMonth() === thisMonth;
-      if (!inM && i >= 35) break;
-      if (!inM && i > 7 && d.getDay() === 1) break;
-      totalDays++;
+    // Start a fresh span around the chosen month
+    const target = getMonthStart(monthOffset);
+    if (monthJump || !monthFrom) {
+      monthFrom = addDays(weekStart(target), -8 * 7);
+      monthWeeks = 24;
     }
-    const weekRows = Math.ceil(totalDays / 7);
-    el.style.gridTemplateRows =
-      "auto " + ("1fr ".repeat(weekRows)).trim();
+    el.innerHTML = "";
+    el.style.gridTemplateRows = "";
 
-    // Day name headers
+    // Day names, kept at the top while scrolling
     DAY_NAMES.forEach(name => {
       const hdr = document.createElement("div");
-      hdr.className = "day-col";
-      hdr.style.borderBottom = "none";
-      hdr.innerHTML =
-        '<div class="day-header"'
-        + ' style="border-bottom:none">'
-        + '<div class="day-name">'
-        + name + '</div></div>';
+      hdr.className = "day-col month-head";
+      hdr.innerHTML = '<div class="day-header" style="border-bottom:none">'
+        + '<div class="day-name">' + name + '</div></div>';
       el.appendChild(hdr);
     });
 
-    // Day cells
-    for (let i = 0; i < totalDays; i++) {
-      const date = new Date(gridStart);
-      date.setDate(gridStart.getDate() + i);
+    // Day cells, a week per row; the 1st of each month is labelled
+    for (let i = 0; i < monthWeeks * 7; i++) {
+      const date = addDays(monthFrom, i);
       const key = dateKey(date);
-      const inMonth = date.getMonth() === thisMonth;
-
-      if (!data.weekly[key]) data.weekly[key] = [];
 
       let cls = "day-col";
-      if (!inMonth)            cls += " other-month";
-      else if (isToday(date))  cls += " today";
-      else if (isPast(date))   cls += " past";
+      if (isToday(date)) cls += " today";
+      else if (isPast(date)) cls += " past";
+      if (date.getDate() === 1) cls += " month-start";
 
       const col = document.createElement("div");
       col.className = cls;
+      col.dataset.date = key;
 
       const header = document.createElement("div");
       header.className = "day-header";
-      header.innerHTML =
-        '<div class="day-date"'
-        + ' style="font-size:14px;">'
-        + date.getDate() + '</div>';
+      header.innerHTML = '<div class="day-date" style="font-size:18px;">'
+        + (date.getDate() === 1
+          ? "1 " + MONTH_NAMES[date.getMonth()].slice(0, 3)
+          : date.getDate())
+        + '</div>';
 
       const tasks = document.createElement("div");
       tasks.className = "day-tasks drop-zone";
       tasks.dataset.list = key;
 
-      data.weekly[key].filter(
-        t => t.text !== ""
-      ).forEach((task, ti) => {
+      addMirrors(tasks, data, dated.byDay[key], renderMonth);
+      prepList(data, key).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
           () => saveData(data),
@@ -1587,19 +2683,88 @@
 
       col.appendChild(header);
       col.appendChild(tasks);
-      setupClickToAdd(
-        col, tasks, data, key, renderMonth
-      );
+      setupClickToAdd(col, key, renderMonth);
       el.appendChild(col);
     }
 
     saveData(data);
+
+    // Scroll to the start of the chosen month, else stay put
+    if (monthJump) {
+      monthJump = false;
+      scrollMonthTo(target);
+    } else {
+      el.scrollTop = keepTop;
+    }
+    updateMonthLabel();
   }
+
+  // Put the week holding a date just under the day names
+  function scrollMonthTo(d) {
+    const content = document.getElementById("month-view");
+    const cell = document.querySelector(
+      '#month-view .day-col[data-date="' + dateKey(weekStart(d)) + '"]'
+    );
+    if (!cell) return;
+    const head = document.querySelector("#month-view .month-head");
+    content.scrollTop += cell.getBoundingClientRect().top
+      - content.getBoundingClientRect().top
+      - (head ? head.offsetHeight : 0);
+  }
+
+  // The label shows the month with the most days on screen
+  function updateMonthLabel() {
+    if (currentView !== "month") return;
+    const content = document.getElementById("month-view");
+    const head = document.querySelector("#month-view .month-head");
+    const box = content.getBoundingClientRect();
+    const top = box.top + (head ? head.offsetHeight : 0);
+    const counts = {};
+    document.querySelectorAll("#month-view .day-col[data-date]")
+      .forEach(cell => {
+        const r = cell.getBoundingClientRect();
+        const mid = (r.top + r.bottom) / 2;
+        if (mid < top || mid > box.bottom) return;
+        const d = keyToDate(cell.dataset.date);
+        const k = d.getFullYear() * 12 + d.getMonth();
+        counts[k] = (counts[k] || 0) + 1;
+      });
+    const keys = Object.keys(counts).map(Number);
+    if (!keys.length) return;
+    const best = keys.reduce((a, b) => counts[b] > counts[a] ? b : a);
+    const shown = new Date(Math.floor(best / 12), best % 12, 1);
+    navLabel.textContent = fmtMonth(shown);
+    const now = new Date();
+    monthOffset = best - (now.getFullYear() * 12 + now.getMonth());
+    localStorage.setItem(MONTH_KEY, monthOffset);
+  }
+
+  // Add weeks above or below as the month view nears either end
+  document.getElementById("month-view").addEventListener("scroll", () => {
+    if (currentView !== "month" || monthBusy || !monthFrom) return;
+    const c = document.getElementById("month-view");
+    if (c.scrollTop < 300) {
+      monthBusy = true;
+      const before = c.scrollHeight;
+      monthFrom = addDays(monthFrom, -4 * 7);
+      monthWeeks += 4;
+      renderMonth();
+      c.scrollTop += c.scrollHeight - before;
+      monthBusy = false;
+    } else if (c.scrollTop + c.clientHeight > c.scrollHeight - 300) {
+      monthBusy = true;
+      monthWeeks += 4;
+      renderMonth();
+      monthBusy = false;
+    }
+    updateMonthLabel();
+  });
 
   // ---- Year ----
 
   function renderYear() {
     const data = loadData();
+    const dated = collectDated(data);
     const el = document.getElementById("year-view");
     el.innerHTML = "";
 
@@ -1631,7 +2796,7 @@
 
       const title = document.createElement("div");
       title.className = "year-month-title";
-      title.textContent = MONTH_NAMES[m];
+      title.textContent = MONTH_NAMES[m].slice(0, 3);
       card.appendChild(title);
 
       const tasks = document.createElement("div");
@@ -1639,9 +2804,8 @@
         "year-month-tasks drop-zone";
       tasks.dataset.list = listKey;
 
-      data.weekly[listKey].filter(
-        t => t.text !== ""
-      ).forEach((task, ti) => {
+      addMirrors(tasks, data, dated.byMonth[listKey], renderYear);
+      prepList(data, listKey).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
           () => saveData(data),
@@ -1660,9 +2824,7 @@
       setupDropZone(tasks, listKey);
 
       card.appendChild(tasks);
-      setupClickToAdd(
-        card, tasks, data, listKey, renderYear
-      );
+      setupClickToAdd(card, listKey, renderYear);
       el.appendChild(card);
     }
 
@@ -1675,11 +2837,14 @@
 
   const views = {
     simple: document.getElementById("simple-view"),
-    toggle: document.getElementById("toggle-view"),
+    dates:  document.getElementById("dates-view"),
     weekly: document.getElementById("weekly-view"),
     month:  document.getElementById("month-view"),
-    year:   document.getElementById("year-view")
+    year:   document.getElementById("year-view"),
+    done:   document.getElementById("done-view")
   };
+
+  let shownView = null;
 
   function renderCurrentView() {
     Object.values(views).forEach(
@@ -1688,13 +2853,27 @@
     const hasNav = ["weekly", "month", "year"]
       .includes(currentView);
     navCtrl.classList.toggle("hidden", !hasNav);
+    applySize(viewSize(currentView));
+    applyWidth(viewWidth(currentView));
     views[currentView].classList.remove("hidden");
 
+    // Animate only when switching to a different view
+    if (currentView !== shownView) {
+      document.getElementById("content").scrollTop = 0;
+      monthJump = true;
+      const v = views[currentView];
+      v.classList.remove("view-in");
+      void v.offsetWidth;
+      v.classList.add("view-in");
+      shownView = currentView;
+    }
+
     if (currentView === "simple")  renderSimple();
-    if (currentView === "toggle")  renderToggle();
+    if (currentView === "dates")   renderDates();
     if (currentView === "weekly")  renderWeekly();
     if (currentView === "month")   renderMonth();
     if (currentView === "year")    renderYear();
+    if (currentView === "done")    renderDone();
   }
 
   // ---- Theme / Size ----
@@ -1712,7 +2891,53 @@
     app.classList.remove(currentSize);
     currentSize = size;
     app.classList.add(currentSize);
-    localStorage.setItem(SIZE_KEY, currentSize);
+    setDropdownActive("dd-size", currentSize);
+  }
+
+  // Each view keeps its own width; views not yet set use normal
+  let currentWidth = "width-normal";
+  function applyWidth(w) {
+    app.classList.remove(currentWidth);
+    currentWidth = w;
+    app.classList.add(currentWidth);
+    setDropdownActive("dd-width", currentWidth);
+  }
+
+  function viewWidth(view) {
+    let widths = {};
+    try {
+      widths = JSON.parse(localStorage.getItem(WIDTHS_KEY)) || {};
+    } catch {}
+    return ["width-normal", "width-wide", "width-full"].includes(widths[view])
+      ? widths[view] : "width-normal";
+  }
+
+  function saveViewWidth(view, w) {
+    let widths = {};
+    try {
+      widths = JSON.parse(localStorage.getItem(WIDTHS_KEY)) || {};
+    } catch {}
+    widths[view] = w;
+    localStorage.setItem(WIDTHS_KEY, JSON.stringify(widths));
+  }
+
+  // Each view keeps its own size; views not yet set use medium
+  function viewSize(view) {
+    let sizes = {};
+    try {
+      sizes = JSON.parse(localStorage.getItem(SIZES_KEY)) || {};
+    } catch {}
+    return ["size-s", "size-m", "size-l"].includes(sizes[view])
+      ? sizes[view] : "size-m";
+  }
+
+  function saveViewSize(view, size) {
+    let sizes = {};
+    try {
+      sizes = JSON.parse(localStorage.getItem(SIZES_KEY)) || {};
+    } catch {}
+    sizes[view] = size;
+    localStorage.setItem(SIZES_KEY, JSON.stringify(sizes));
   }
 
   // ---- Nav ----
@@ -1726,7 +2951,7 @@
       } else if (currentView === "month") {
         monthOffset--;
         localStorage.setItem(MONTH_KEY, monthOffset);
-        renderMonth();
+        jumpToMonth();
       } else if (currentView === "year") {
         yearOffset--;
         localStorage.setItem(YEAR_KEY, yearOffset);
@@ -1743,7 +2968,7 @@
       } else if (currentView === "month") {
         monthOffset++;
         localStorage.setItem(MONTH_KEY, monthOffset);
-        renderMonth();
+        jumpToMonth();
       } else if (currentView === "year") {
         yearOffset++;
         localStorage.setItem(YEAR_KEY, yearOffset);
@@ -1760,7 +2985,7 @@
       } else if (currentView === "month") {
         monthOffset = 0;
         localStorage.setItem(MONTH_KEY, monthOffset);
-        renderMonth();
+        jumpToMonth();
       } else if (currentView === "year") {
         yearOffset = 0;
         localStorage.setItem(YEAR_KEY, yearOffset);
@@ -1777,15 +3002,17 @@
     setDropdownActive("dd-theme", savedTheme);
   }
 
-  const savedSize = localStorage.getItem(SIZE_KEY);
-  if (["size-s", "size-m", "size-l"]
-    .includes(savedSize)) {
-    applySize(savedSize);
-    setDropdownActive("dd-size", savedSize);
-  }
-
-  const savedView = localStorage.getItem(VIEW_KEY);
-  if (["simple","toggle","weekly","month","year"]
+  // The toggle view is now the dates view
+  let savedView = localStorage.getItem(VIEW_KEY);
+  if (savedView === "toggle") savedView = "dates";
+  try {
+    const sizes = JSON.parse(localStorage.getItem(SIZES_KEY)) || {};
+    if (sizes.toggle && !sizes.dates) {
+      sizes.dates = sizes.toggle;
+      localStorage.setItem(SIZES_KEY, JSON.stringify(sizes));
+    }
+  } catch {}
+  if (["simple", "dates", "weekly", "month", "year", "done"]
     .includes(savedView)) {
     currentView = savedView;
     setDropdownActive("dd-style", savedView);
