@@ -3,9 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>R Editor</title>
+<title>codepad · toolkit</title>
 <link rel="stylesheet"
   href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<!-- Ubuntu Mono: a slim, sans-serif monospace -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap">
 <style>
   :root {
     --no-bg:         #011627;
@@ -29,7 +33,9 @@
     --sel-bg:        #012a3f;
     --sel-bdr:       #1e3a52;
     --sel-fg:        #d6deeb;
-    --font-mono: 'Lucida Console', 'Lucida Sans Typewriter', monospace;
+    /* Ubuntu Mono from Google Fonts; offline, Consolas, then Menlo */
+    --font-mono: 'Ubuntu Mono', 'Consolas', 'Menlo', 'Lucida Console',
+      monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -168,25 +174,23 @@
     width: 100%;
   }
   #editor-wrap.t-github { border-color: #a3c4c6; }
+
+  /* A soft shadow, deeper in dark mode so it still shows */
+  #editor-wrap.t-night-owl { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); }
+  #editor-wrap.t-github { box-shadow: 0 2px 8px rgba(36, 70, 75, 0.14); }
   #editor-wrap.width-normal { max-width: 880px; }
   #editor-wrap.width-wide { max-width: calc(50% + 440px); }
   #editor-wrap.width-full { max-width: 100%; }
 
   /* Rainbow brackets by nesting depth */
-  .t-night-owl .cm-paren-0 { color: #ffd700 !important; }
-  .t-night-owl .cm-paren-1 { color: #da70d6 !important; }
-  .t-night-owl .cm-paren-2 { color: #179fff !important; }
-  .t-night-owl .cm-paren-3 { color: #3dd68c !important; }
-  .t-night-owl .cm-paren-4 { color: #ff6b8b !important; }
-  .t-night-owl .cm-paren-5 { color: #a59cff !important; }
-  .t-night-owl .cm-paren-6 { color: #ffa94d !important; }
-  .t-github .cm-paren-0 { color: #b8860b !important; }
-  .t-github .cm-paren-1 { color: #a33ea1 !important; }
-  .t-github .cm-paren-2 { color: #0f6fc6 !important; }
-  .t-github .cm-paren-3 { color: #1e8c5a !important; }
-  .t-github .cm-paren-4 { color: #c2185b !important; }
-  .t-github .cm-paren-5 { color: #5a4fcf !important; }
-  .t-github .cm-paren-6 { color: #c26a00 !important; }
+  /* Same colours in both modes */
+  .cm-paren-0 { color: #ed909a !important; }
+  .cm-paren-1 { color: #d3a25e !important; }
+  .cm-paren-2 { color: #99b657 !important; }
+  .cm-paren-3 { color: #2dc192 !important; }
+  .cm-paren-4 { color: #04bdce !important; }
+  .cm-paren-5 { color: #8ea9ec !important; }
+  .cm-paren-6 { color: #d891db !important; }
 
   .CodeMirror {
     height: 100% !important;
@@ -198,15 +202,16 @@
   .CodeMirror-scroll { height: 100% !important; }
 
   /* Editor text size for each size option */
-  .size-s .CodeMirror { font-size: 16px; }
-  .size-m .CodeMirror { font-size: 18px; }
-  .size-l .CodeMirror { font-size: 21px; }
+  .size-s { --code-fs: 13px; }
+  .size-m { --code-fs: 16px; }
+  .size-l { --code-fs: 19px; }
+  .CodeMirror { font-size: var(--code-fs, 16px); }
 
   /* ---- Night Owl (CCL), matching ccl-rstudio-theme-dark ---- */
   .t-night-owl .CodeMirror { background: var(--no-codebg) !important; color: var(--no-fg) !important; }
   .t-night-owl .CodeMirror-gutters { background: var(--no-codebg) !important; border-right: none !important; }
   .t-night-owl .CodeMirror-activeline-gutter { background: var(--no-codebg) !important; }
-  .t-night-owl .CodeMirror-linenumber { color: #1e3a52 !important; }
+  .t-night-owl .CodeMirror-linenumber { color: #2a4d6b !important; }
   .t-night-owl .CodeMirror-cursor { border-left: 2px solid var(--no-cursor) !important; }
   .t-night-owl .CodeMirror-selected { background: var(--no-selection) !important; }
   .t-night-owl .CodeMirror-activeline-background { background: var(--no-codebg) !important; }
@@ -257,8 +262,12 @@
 
   /* Line numbers sit near the left edge; the code keeps its place */
   .CodeMirror-linenumber {
-    padding: 0 22px 0 12px !important;
+    padding: 0 9px 0 12px !important;
     text-align: left !important;
+
+    /* 3px smaller than the code, centred on its line */
+    font-size: calc(var(--code-fs, 16px) - 3px);
+    line-height: calc(var(--code-fs, 16px) * 1.6);
   }
   .CodeMirror-lines { padding: 16px 0 !important; }
   .CodeMirror pre.CodeMirror-line,
@@ -282,43 +291,6 @@
 </head>
 <body>
 <div id="app">
-  <div id="toolbar">
-    <a id="home-link" href="../index.html"
-      title="Back to toolkit">&lsaquo; Toolkit</a>
-    <div id="dropdown-controls">
-      <div class="dropdown" id="dd-theme">
-        <div class="dropdown-btn">Dark</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item active"
-            data-value="t-night-owl">Dark</div>
-          <div class="dropdown-item"
-            data-value="t-github">Light</div>
-        </div>
-      </div>
-      <div class="dropdown" id="dd-size">
-        <div class="dropdown-btn">Medium</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item"
-            data-value="size-s">Small</div>
-          <div class="dropdown-item active"
-            data-value="size-m">Medium</div>
-          <div class="dropdown-item"
-            data-value="size-l">Large</div>
-        </div>
-      </div>
-      <div class="dropdown" id="dd-width">
-        <div class="dropdown-btn">Normal</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item active"
-            data-value="width-normal">Normal</div>
-          <div class="dropdown-item"
-            data-value="width-wide">Wide</div>
-          <div class="dropdown-item"
-            data-value="width-full">Full</div>
-        </div>
-      </div>
-    </div>
-  </div>
   <div id="editor-area">
   <div id="editor-wrap" class="t-night-owl size-m width-normal">
     <textarea id="editor"># Eastern quoll habitat analysis
@@ -368,6 +340,7 @@ print(n_captures)
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="../sync.js"></script>
+<script src="../sidebar.js"></script>
 <script>
   const wrap = document.getElementById("editor-wrap");
   const area = document.getElementById("editor-area");
@@ -488,6 +461,7 @@ print(n_captures)
   // Mark the chosen option and show it on the button
   function setDropdownActive(ddId, value) {
     const dd = document.getElementById(ddId);
+    if (!dd) return;
     dd.querySelectorAll(".dropdown-item").forEach(item => {
       const on = item.dataset.value === value;
       item.classList.toggle("active", on);
@@ -560,10 +534,8 @@ print(n_captures)
     restoring = false;
   }
 
-  const savedTheme = localStorage.getItem(
-    "r-editor-theme"
-  );
-  if (savedTheme && themeBgs[savedTheme]) applyTheme(savedTheme);
+  // Older versions saved the codepad's own mode; the sidebar now shares one
+  const savedTheme = localStorage.getItem("r-editor-theme");
 
   const savedWidth = localStorage.getItem("r-editor-width");
   if (["width-normal", "width-wide", "width-full"].includes(savedWidth)) {
@@ -574,6 +546,34 @@ print(n_captures)
   if (["size-s", "size-m", "size-l"].includes(savedSize)) {
     applySize(savedSize);
   }
+
+  // Sidebar: views, shared mode, and the codepad's size and width
+  ToolkitSidebar.init({
+    active: "codepad",
+    mode: {
+      apply: (m, anim) => {
+        if (anim) animate("theme-anim", 300);
+        applyTheme(m === "light" ? "t-github" : "t-night-owl");
+      },
+      initial: savedTheme === "t-github" ? "light" : "dark"
+    },
+    page: "codepad/index.html",
+    size: {
+      get: () => currentSize.slice(5),
+      set: v => {
+        animate("size-anim", 220, () => editor.refresh());
+        applySize("size-" + v);
+        localStorage.setItem("r-editor-size", currentSize);
+      }
+    },
+    width: {
+      get: () => currentWidth.slice(6),
+      set: v => {
+        applyWidth("width-" + v);
+        localStorage.setItem("r-editor-width", currentWidth);
+      }
+    }
+  });
 
   // Sync editor content via Google Drive
   ToolSync.init({

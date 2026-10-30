@@ -14,7 +14,8 @@
 (function () {
 
   // Paste the OAuth client ID from Google Cloud here
-  const CLIENT_ID = "162961094882-4v360khh8d3hohj1arp3g80lgkoipdc9.apps.googleusercontent.com";
+  const CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com";
+
   const API        = "https://www.googleapis.com/drive/v3/files";
   const POLL_EVERY = 60000;
   const PUSH_DELAY = 2000;
@@ -31,11 +32,24 @@
     syncing:   "Syncing…"
   };
 
+  // Hover labels for the sidebar's sync icon
+  const SIDEBAR = {
+    error:       "sync: failed, click to retry",
+    noClient:    "sync: no client ID in sync.js",
+    pending:     "sync: saving…",
+    reconnect:   "sync: signed out, click to reconnect",
+    signedOut:   "sync: signed out, click to sign in",
+    synced:      "sync: synced",
+    syncing:     "sync: syncing…",
+    unavailable: "sync: unavailable on local files"
+  };
+
   const nativeRemove = Storage.prototype.removeItem;
   const nativeSet    = Storage.prototype.setItem;
 
   let again = false, applying = false, busy = false;
-  let btn = null, cfg = null, pushTimer = null, tokenClient = null;
+  let btn = null, cfg = null, pushTimer = null, state = null;
+  let tokenClient = null;
 
   // ---- Local metadata ----
 
@@ -307,7 +321,25 @@
 
   // ---- Status button ----
 
-  function setStatus(state) {
+  // Show the state on the sidebar's sync icon, if the page has one
+  function notify() {
+    if (!state) return;
+    if (window.ToolkitSidebar && ToolkitSidebar.setSync) {
+      ToolkitSidebar.setSync(state, SIDEBAR[state]);
+    }
+  }
+
+  // Click signs in or syncs now; alt-click signs out
+  function click(e) {
+    if (state === "noClient" || state === "unavailable") return;
+    if (e && e.altKey) signOut();
+    else if (getToken()) sync();
+    else connect();
+  }
+
+  function setStatus(next) {
+    state = next;
+    notify();
     if (!btn) return;
     btn.dataset.state = state;
     btn.textContent = LABELS[state];
@@ -343,11 +375,7 @@
     btn = document.createElement("button");
     btn.id = "tool-sync";
     btn.type = "button";
-    btn.addEventListener("click", e => {
-      if (e.altKey) signOut();
-      else if (getToken()) sync();
-      else connect();
-    });
+    btn.addEventListener("click", click);
     document.body.appendChild(btn);
   }
 
@@ -357,9 +385,13 @@
     cfg = options;
 
     // Google sign-in needs a hosted page, not file://
-    if (location.protocol === "file:") return;
+    if (location.protocol === "file:") {
+      setStatus("unavailable");
+      return;
+    }
     if (CLIENT_ID.startsWith("YOUR_")) {
       console.info("Sync: add a client ID to sync.js to enable it");
+      setStatus("noClient");
       return;
     }
 
@@ -382,6 +414,8 @@
     }, POLL_EVERY);
   }
 
-  window.ToolSync = { init, signOut, sync };
+  window.ToolSync = {
+    click, init, notify, signOut, sync, status: () => state
+  };
 
 })();

@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dashboard · toolkit</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  button, input { font-family: inherit; }
+  html, body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* ---- Modes, as in the to-dos ---- */
+  .t-dark {
+    --accent:     #7fdbca;
+    --bg:         #011627;
+    --border:     #1e3a52;
+    --done:       #2f5d69;
+    --fg:         #d6deeb;
+    --fg-muted:   #6c7a89;
+    --hover:      #012a3f;
+    --head-tint:  rgba(1, 22, 39, 0.5);
+    --panel:      rgba(19, 85, 92, 0.25);
+    --scroll-thumb: #1e3a52;
+    --shadow:     0 2px 10px rgba(0, 0, 0, 0.45);
+  }
+  .t-light {
+    --accent:     #0c9e9a;
+    --bg:         #ecf2f2;
+    --border:     #a3c4c6;
+    --done:       #2f5d69;
+    --fg:         #24292e;
+    --fg-muted:   #6a737d;
+    --hover:      #d9e8ea;
+    --head-tint:  rgba(236, 242, 242, 0.5);
+    --panel:      #dce7e8;
+    --scroll-thumb: #bccfd2;
+    --shadow:     0 2px 8px rgba(36, 70, 75, 0.14);
+  }
+  .size-s { --fs: 14px; }
+  .size-m { --fs: 16px; }
+  .size-l { --fs: 18px; }
+
+  #app {
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    font-size: var(--fs);
+    height: 100vh;
+  }
+
+  /* ---- Main area ---- */
+  main {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 48px 56px 60px;
+  }
+  .main-inner {
+    margin: 0 auto;
+    transition: max-width 0.25s ease;
+  }
+  .width-normal .main-inner { max-width: 880px; }
+  .width-wide .main-inner { max-width: 1200px; }
+  .width-full .main-inner { max-width: 100%; }
+
+  #day {
+    font-size: 2.5em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  #today-date { color: var(--accent); font-size: 1.1em; margin-top: 6px; }
+  .rule {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 18px 0 28px;
+  }
+
+  /* Square tool buttons, mostly icon, with the name at the bottom */
+  .tools {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(3, 9.5em);
+  }
+  .tool {
+    align-items: center;
+    aspect-ratio: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    color: var(--fg);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    font-size: 1em;
+    font-weight: 600;
+    justify-content: space-between;
+    padding: 14px 10px 10px;
+    position: relative;
+    text-decoration: none;
+    text-transform: lowercase;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .tool:hover { border-color: var(--accent); }
+  .tool svg {
+    color: var(--accent);
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    width: 62%;
+  }
+  .tool .chev {
+    color: var(--fg-muted);
+    font-size: 0.7em;
+    position: absolute;
+    right: 9px;
+    top: 7px;
+    transition: transform 0.25s ease;
+  }
+  .tool.open { border-color: var(--accent); }
+  .tool.open .chev { transform: rotate(180deg); }
+
+  /* To-dos views slide open below the buttons */
+  .views {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+  .views.open { grid-template-rows: 1fr; }
+  .views-inner {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(6, 5.5em);
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 2px;
+    transition: padding 0.25s ease;
+  }
+  .views.open .views-inner { padding: 16px 2px 6px; }
+  .view-btn {
+    align-items: center;
+    aspect-ratio: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85em;
+    justify-content: space-between;
+    padding: 10px 4px 6px;
+    text-decoration: none;
+    text-transform: lowercase;
+    transition: border-color 0.15s;
+  }
+  .view-btn:hover { border-color: var(--accent); }
+  .view-btn svg {
+    color: var(--accent);
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    width: 55%;
+  }
+
+  .section-label {
+    color: var(--fg-muted);
+    font-size: 0.85em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0 0 12px;
+    text-transform: lowercase;
+  }
+
+  /* Recent notes slide open under the notes button */
+  .notes-slide .slide-inner {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 2px;
+    transition: padding 0.25s ease;
+  }
+  .views.open .slide-inner { padding: 16px 2px 6px; }
+  .recent {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  .note-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    height: 140px;
+    overflow: hidden;
+    text-decoration: none;
+    transition: border-color 0.15s;
+  }
+  .note-card:hover { border-color: var(--accent); }
+  .note-card .nc-head {
+    background: var(--head-tint);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 9px;
+  }
+  .nc-name {
+    font-size: 0.9em;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nc-name.untitled { color: var(--fg-muted); font-weight: 400; }
+  .nc-date { color: var(--accent); font-size: 0.72em; }
+  .nc-preview {
+    color: var(--fg-muted);
+    flex: 1;
+    font-size: 0.78em;
+    line-height: 1.5;
+    -webkit-mask-image: linear-gradient(#000 60%, transparent);
+    mask-image: linear-gradient(#000 60%, transparent);
+    overflow: hidden;
+    padding: 6px 9px;
+  }
+  .nc-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note-card.new {
+    align-items: center;
+    background: none;
+    border: 1.5px dashed var(--border);
+    box-shadow: none;
+    color: var(--fg-muted);
+    font-size: 0.9em;
+    justify-content: center;
+    text-transform: lowercase;
+  }
+  .note-card.new:hover { border-color: var(--accent); color: var(--accent); }
+  .note-card.all {
+    align-items: center;
+    color: var(--fg);
+    font-size: 0.9em;
+    font-weight: 600;
+    gap: 10px;
+    justify-content: center;
+    text-transform: lowercase;
+  }
+  .note-card.all svg { color: var(--accent); height: 40%; width: 40%; }
+
+  /* ---- Right sidebar ---- */
+  /* The today sidebar: resizable, and folds to a slim strip */
+  aside {
+    display: flex;
+    flex: 0 0 320px;
+    flex-direction: column;
+    gap: 32px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 48px 28px 36px;
+    position: relative;
+    transition: flex-basis 0.25s ease, padding 0.25s ease;
+  }
+  aside.dragging { transition: none; }
+  .aside-wrap { display: flex; flex: none; position: relative; }
+
+  /* The dividing line stops about 1cm short of the top and bottom */
+  .aside-wrap::before {
+    background: var(--border);
+    bottom: 38px;
+    content: '';
+    left: 0;
+    position: absolute;
+    top: 38px;
+    width: 1px;
+    z-index: 1;
+  }
+  .aside-handle {
+    bottom: 0;
+    cursor: col-resize;
+    left: -4px;
+    position: absolute;
+    top: 0;
+    width: 9px;
+    z-index: 2;
+  }
+  .aside-wrap:has(.aside-handle:hover)::before,
+  .aside-wrap.resizing::before { background: var(--accent); }
+  .fold-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-size: 15px;
+    height: 24px;
+    line-height: 1;
+    width: 24px;
+  }
+  .fold-btn:hover { background: var(--hover); color: var(--accent); }
+  .today-head .fold-btn { margin-left: 6px; }
+  .unfold {
+    display: none;
+    left: 6px;
+    position: absolute;
+    top: 44px;
+  }
+  aside.folded { flex-basis: 36px !important; padding: 48px 0; }
+  aside.folded > * { display: none; }
+  aside.folded > .unfold { display: block; }
+  .today-actions { align-items: center; display: flex; }
+
+  /* Arriving at the dashboard: a gentle fade and rise */
+  @keyframes dash-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes side-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .main-inner { animation: dash-in 0.35s ease both; }
+  aside > div { animation: side-in 0.35s ease 0.08s both; }
+  .today-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .today-title { font-size: 1.35em; font-weight: 600; }
+
+  /* At a glance: today, tomorrow, rest of this week, next week */
+  .peek + .peek .peek-head { margin-top: 18px; }
+  .peek-head {
+    align-items: center;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    font-size: 0.9em;
+    font-weight: 600;
+    gap: 8px;
+    user-select: none;
+  }
+  .peek-arrow {
+    display: inline-block;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+    width: 12px;
+  }
+  .peek:not(.open) .peek-arrow { transform: rotate(-90deg); }
+  .peek-count { color: var(--fg-muted); font-size: 0.8em; font-weight: 400; }
+  .peek-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+  .peek.open .peek-body { grid-template-rows: 1fr; }
+  .peek-inner { min-height: 0; overflow: hidden; }
+
+  /* Items sit in, level with the toggle's text */
+  .peek-items { padding: 6px 0 0 20px; }
+
+  .task {
+    align-items: flex-start;
+    display: flex;
+    gap: 8px;
+    line-height: 1.4;
+    padding: 4px 0;
+  }
+  .task input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 2px solid var(--accent);
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    height: 16px;
+    margin-top: calc((1.4em - 16px) / 2);
+    position: relative;
+    width: 16px;
+  }
+  .task input[type="checkbox"]:checked { background: var(--accent); }
+  .task input[type="checkbox"]:checked::after {
+    border: solid var(--bg);
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 8px;
+    left: 3px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 4px;
+  }
+  .task-text { flex: 1; min-width: 0; word-break: break-word; }
+  .task.done .task-text,
+  .task.done .task-text span {
+    color: var(--done);
+    text-decoration: line-through;
+  }
+  .date-token, .mention-token { color: var(--accent); }
+  .tag-token {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-radius: 3px;
+    color: var(--accent);
+  }
+  .note-link {
+    color: var(--fg-muted);
+    flex-shrink: 0;
+    font-size: 0.8em;
+    line-height: 1.75;
+    text-decoration: none;
+  }
+  .note-link:hover { color: var(--accent); }
+  .add-row { align-items: center; display: flex; gap: 8px; margin-top: 4px; }
+  .add-box {
+    border: 2px solid var(--accent);
+    border-radius: 3px;
+    flex-shrink: 0;
+    height: 16px;
+    opacity: 0.5;
+    width: 16px;
+  }
+  #add {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg);
+    flex: 1;
+    font-size: 1em;
+    min-width: 0;
+    outline: none;
+    padding: 6px 0;
+  }
+  #add:focus { border-bottom-color: var(--accent); }
+  #add::placeholder { color: var(--fg-muted); opacity: 0.7; }
+
+  /* The day's quote */
+  .quote { margin-top: auto; }
+  #quote-text {
+    color: var(--accent);
+    font-style: italic;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+  #quote-by { color: var(--done); font-size: 0.9em; margin-top: 10px; }
+
+  /* Narrow windows: the sidebar sits below */
+  @media (max-width: 900px) {
+    #app { flex-direction: column; overflow-y: auto; }
+    main, aside { flex: none; overflow: visible; }
+    .aside-wrap { border-top: 1px solid var(--border); }
+    .aside-wrap::before, .aside-handle, .fold-btn { display: none; }
+    aside, aside.folded { flex-basis: auto !important; padding: 36px 28px; }
+    aside.folded > * { display: revert; }
+    .views-inner { grid-template-columns: repeat(3, 5.5em); }
+  }
+  @media (max-width: 600px) {
+    main { padding: 32px 20px; }
+    .tools { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Brief colour fade while the mode changes */
+  .theme-anim, .theme-anim * {
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+      color 0.25s ease !important;
+  }
+
+  /* ---- Scrollbars in the mode's colours ---- */
+  #app { scrollbar-color: var(--scroll-thumb) transparent; }
+  #app ::-webkit-scrollbar { height: 10px; width: 10px; }
+  #app ::-webkit-scrollbar-track { background: transparent; }
+  #app ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+  body #tool-sync { font-size: 16px; text-transform: lowercase; }
+</style>
+</head>
+<body>
+<div id="app" class="t-dark size-m width-normal">
+  <main>
+    <div class="main-inner">
+      <h1 id="day"></h1>
+      <div id="today-date"></div>
+      <hr class="rule">
+      <div class="section-label">tools</div>
+      <div class="tools">
+        <button class="tool" type="button" data-tool="notes"
+          aria-expanded="false"></button>
+        <button class="tool" type="button" data-tool="todos"
+          aria-expanded="false"></button>
+        <a class="tool" href="../codepad/index.html" data-tool="codepad"></a>
+      </div>
+      <div class="views notes-slide"><div class="slide-inner">
+        <div class="recent"></div>
+      </div></div>
+      <div class="views todos-slide"><div class="views-inner"></div></div>
+    </div>
+  </main>
+  <div class="aside-wrap">
+  <div class="aside-handle" title="drag to resize"></div>
+  <aside>
+    <button class="fold-btn unfold" type="button" title="show at a glance"
+      aria-label="show at a glance">&laquo;</button>
+    <div>
+      <div class="today-head">
+        <span class="today-title">at a glance</span>
+        <button class="fold-btn" id="fold" type="button"
+          title="fold away" aria-label="fold away">&raquo;</button>
+      </div>
+      <div id="glance"></div>
+      <div class="add-row">
+        <span class="add-box" aria-hidden="true"></span>
+        <input id="add" type="text" placeholder="add a to do for today"
+          autocomplete="off">
+      </div>
+    </div>
+    <div class="quote">
+      <div id="quote-text"></div>
+      <div id="quote-by"></div>
+    </div>
+  </aside>
+  </div>
+</div>
+
+<script src="../sync.js"></script>
+<script src="../sidebar.js"></script>
+<script src="../dates.js"></script>
+<script>
+  const D = ToolkitDates;
+  const NOTES_KEY = "notes-data";
+  const FOLD_KEY  = "dashboard-today-folded";
+  const GLANCE_KEY = "dashboard-glance";
+  const OPEN_KEY  = "dashboard-todos-open";
+  const PANEL_KEY = "dashboard-panel";
+  const SIDE_KEY  = "dashboard-today-width";
+  const SIZE_KEY  = "dashboard-size";
+  const TODO_KEY  = "todo-data";
+  const WIDTH_KEY = "dashboard-width";
+
+  const app = document.getElementById("app");
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+    "Friday", "Saturday"];
+  const MONTH_NAMES = ["January", "February", "March", "April", "May",
+    "June", "July", "August", "September", "October", "November",
+    "December"];
+  const VIEWS = [["simple", "simple"], ["dates", "dates"], ["weekly", "week"],
+    ["month", "month"], ["year", "year"], ["done", "done"]];
+
+  // One quote a day, in this order
+  const QUOTES = [
+    ["Above all, don't fear difficult moments.\nThe best comes from them.",
+      "Rita Levi-Montalcini, Nobel neurobiologist"],
+    ["All sorts of things can happen\nwhen you're open to new ideas and\n"
+      + "playing around with things.",
+      "Stephanie Kwolek, chemist and inventor"],
+    ["An ugly baby is better than no baby at all.\nIf you wait and wait "
+      + "and wait for your product\nto be perfect before you release it "
+      + "into the world,\nyou will never get there.",
+      "Kathryn Minshew, entrepreneur"],
+    ["Be focused. Be determined. Be hopeful. Be empowered.",
+      "Michelle Obama, attorney and author"],
+    ["Courage is like — it's a habitus, a habit, a virtue:\nyou get it by "
+      + "courageous acts.\nIt's like you learn to swim by swimming.\n"
+      + "You learn courage by couraging.",
+      "Mary Daly, feminist philosopher and theologian"],
+    ["Forgive yourself for staying too long,\nsaying the wrong thing,\n"
+      + "holding onto the past,\nnot allowing yourself to grow,\nnot "
+      + "knowing all the answers,\nletting an opportunity pass,\njudging "
+      + "yourself,\nfollowing old patterns -\nbeing human.", "Unknown"],
+    ["Humans are not wired to be constantly wired.",
+      "Cal Newport, computer scientist and author"],
+    ["If you haven't failed yet, you haven't tried anything.",
+      "Reshma Saujani, entrepreneur"],
+    ["Learn to ask for things. Be concise, relevant and brave.",
+      "Angie Chang, founder"],
+    ["Muddy water is best cleared by leaving it alone.",
+      "Alan Watts, philosopher"],
+    ["Never doubt that a small group of thoughtful, committed citizens "
+      + "can change the world; indeed, it's the only thing that ever has.",
+      "Margaret Mead, anthropologist"],
+    ["Prioritise a clear sense of why over an excessively detailed sense "
+      + "of how.", "Auftragstaktik, mission command principle"],
+    ["Small deeds done are better\nthan great deeds planned.",
+      "Peter Marshall, preacher and US Senate chaplain"],
+    ["Success has nothing\nto do with perfection.",
+      "Michelle Obama, attorney and author"],
+    ["The more clearly we can focus our attention\non the wonders and "
+      + "realities of the universe about us,\nthe less taste we shall "
+      + "have for destruction.", "Rachel Carson, conservationist"],
+    ["The way of progress is neither swift nor easy.",
+      "Marie Curie, physicist"],
+    ["This job is a great scientific adventure.\nBut it's also a great "
+      + "human adventure.\nHumankind has made giant steps forward.\n"
+      + "However, what we know is really very,\nvery little compared to "
+      + "what we still have to know.", "Fabiola Gianotti, physicist"],
+    ["We are what we repeatedly do.\nExcellence, then, is not an act, but "
+      + "a habit.", "Will Durant, historian and philosopher"],
+    ["What you do makes a difference,\nand you have to decide what kind "
+      + "of\ndifference you want to make.", "Jane Goodall, primatologist"]
+  ];
+
+  function read(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+
+  function store(key, value) {
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
+  // ---- Heading, tools and quote ----
+
+  function renderHeading() {
+    const now = new Date();
+    document.getElementById("day").textContent = DAY_NAMES[now.getDay()];
+    document.getElementById("today-date").textContent = "@" + now.getDate()
+      + " " + MONTH_NAMES[now.getMonth()].slice(0, 3).toLowerCase() + " "
+      + now.getFullYear();
+
+    // Days since 1 Jan 1970 in local time pick the quote
+    const local = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const q = QUOTES[Math.floor(local / 864e5) % QUOTES.length];
+    document.getElementById("quote-text").textContent = "“" + q[0] + "”";
+    document.getElementById("quote-by").textContent = "@" + q[1];
+  }
+
+  function renderTools() {
+    const icon = id => ToolkitSidebar.icon(id);
+    const label = { codepad: "codepad", notes: "notes", todos: "to dos" };
+    document.querySelectorAll(".tool").forEach(t => {
+      const id = t.dataset.tool;
+      t.innerHTML = icon(id) + "<span>" + label[id] + "</span>"
+        + (id === "codepad" ? "" : '<span class="chev">▼</span>');
+    });
+    const inner = document.querySelector(".views-inner");
+    VIEWS.forEach(([id, name]) => {
+      const a = document.createElement("a");
+      a.className = "view-btn";
+      a.href = "../to-dos/index.html#" + id;
+      a.dataset.view = id;
+      a.innerHTML = icon(id) + "<span>" + name + "</span>";
+      inner.appendChild(a);
+    });
+    let panel = read(PANEL_KEY);
+    if (panel === null && read(OPEN_KEY) === "1") panel = "todos";
+    setPanel(["notes", "todos"].includes(panel) ? panel : "");
+  }
+
+  // Notes and to dos each slide a panel open; one at a time
+  function setPanel(which) {
+    ["notes", "todos"].forEach(id => {
+      const open = id === which;
+      const btn = document.querySelector('.tool[data-tool="' + id + '"]');
+      const slide = document.querySelector("." + id + "-slide");
+      slide.classList.toggle("open", open);
+      btn.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      slide.querySelectorAll("a").forEach(a => {
+        a.tabIndex = open ? 0 : -1;
+      });
+    });
+    store(PANEL_KEY, which);
+  }
+
+  ["notes", "todos"].forEach(id => {
+    document.querySelector('.tool[data-tool="' + id + '"]')
+      .addEventListener("click", e => {
+        setPanel(e.currentTarget.classList.contains("open") ? "" : id);
+      });
+  });
+
+  // ---- Today's to-dos ----
+
+  function loadTodos() {
+    try {
+      const data = JSON.parse(read(TODO_KEY));
+      if (data && Array.isArray(data.simple)) {
+        data.weekly = data.weekly || {};
+        data.toggleData = data.toggleData || {};
+        return data;
+      }
+    } catch {}
+    return { simple: [], toggleData: {}, weekly: {} };
+  }
+
+  function loadNotes() {
+    try {
+      const data = JSON.parse(read(NOTES_KEY));
+      if (data && Array.isArray(data.notes)) return data;
+    } catch {}
+    return null;
+  }
+
+  function lists(data) {
+    const out = [["simple", data.simple]];
+    Object.keys(data.toggleData).forEach(id => {
+      out.push(["toggle-" + id, data.toggleData[id]]);
+    });
+    Object.keys(data.weekly).forEach(k => out.push([k, data.weekly[k]]));
+    return out;
+  }
+
+  function htmlText(html) {
+    const t = document.createElement("template");
+    t.innerHTML = String(html || "").replace(/<br>/g, " ");
+    return t.content.textContent;
+  }
+
+  const SECTIONS = [
+    { id: "today", label: "today" },
+    { id: "tomorrow", label: "tomorrow" },
+    { id: "week", label: "rest of this week" },
+    { id: "next", label: "next week" }
+  ];
+
+  // Day ranges for each toggle, from today
+  function sectionRanges() {
+    const t = D.dayStart(new Date());
+    const day = t.getDay();
+    const sunday = D.addDays(t, day === 0 ? 0 : 7 - day);
+    return {
+      next: { end: D.addDays(sunday, 7), start: D.addDays(sunday, 1) },
+      today: { end: t, start: t },
+      tomorrow: { end: D.addDays(t, 1), start: D.addDays(t, 1) },
+      week: { end: sunday, start: D.addDays(t, 2) }
+    };
+  }
+
+  // The toggle a date range belongs to: one that holds it, else (for
+  // ranges) the later toggle it overlaps
+  function sectionFor(r, ranges) {
+    if (!r) return null;
+    const holds = SECTIONS.find(s => ranges[s.id].start <= ranges[s.id].end
+      && r.start >= ranges[s.id].start && r.end <= ranges[s.id].end);
+    if (holds) return holds.id;
+    const over = ["week", "next"].find(id => ranges[id].start <= ranges[id].end
+      && r.start <= ranges[id].end && r.end >= ranges[id].start);
+    return over || null;
+  }
+
+  // Dated to dos and note to dos, grouped by toggle
+  function glanceItems(data) {
+    const ranges = sectionRanges();
+    const out = { next: [], today: [], tomorrow: [], week: [] };
+    lists(data).forEach(([src, list]) => {
+      (list || []).forEach(task => {
+        if (!task.text) return;
+        const id = sectionFor(D.taskRange(task, src), ranges);
+        if (id) out[id].push({ done: !!task.done, task, text: task.text });
+      });
+    });
+    const notes = loadNotes();
+    (notes ? notes.notes : []).forEach(n => {
+      if (n.trashed || !Array.isArray(n.blocks)) return;
+      n.blocks.forEach(b => {
+        if (b.type !== "todo") return;
+        const text = htmlText(b.html).trim();
+        if (!text) return;
+        const anchor = D.dayStart(
+          new Date(b.anchorAt || n.updated || Date.now()));
+        const id = sectionFor(D.textRange(text, anchor), ranges);
+        if (id) {
+          out[id].push({ block: b, done: !!b.checked, note: n, notes, text });
+        }
+      });
+    });
+    Object.values(out).forEach(list => list.sort((a, b) => a.done - b.done));
+    return out;
+  }
+
+  function glanceOpen() {
+    try {
+      return Object.assign({ today: true },
+        JSON.parse(read(GLANCE_KEY)) || {});
+    } catch { return { today: true }; }
+  }
+
+  function setTodo(item, done, data) {
+    if (item.note) {
+      item.block.checked = done;
+      if (done) item.block.doneAt = Date.now();
+      else delete item.block.doneAt;
+      store(NOTES_KEY, JSON.stringify(item.notes));
+
+      // Mark the notes as changed so their next sync sends this tick
+      try {
+        const meta = JSON.parse(read("sync-meta-notes.json"));
+        if (meta) {
+          meta.updated = Date.now();
+          store("sync-meta-notes.json", JSON.stringify(meta));
+        }
+      } catch {}
+      return;
+    }
+    item.task.done = done;
+    if (done) item.task.doneAt = Date.now();
+    else delete item.task.doneAt;
+    store(TODO_KEY, JSON.stringify(data));
+  }
+
+  // The add box lives under today, moved in on each render
+  const addRow = document.querySelector(".add-row");
+
+  function renderToday() {
+    const data = loadTodos();
+    const groups = glanceItems(data);
+    const open = glanceOpen();
+    const box = document.getElementById("glance");
+    box.innerHTML = "";
+    SECTIONS.forEach(sec => {
+      const wrapEl = document.createElement("div");
+      wrapEl.className = "peek" + (open[sec.id] ? " open" : "");
+      wrapEl.dataset.section = sec.id;
+      const head = document.createElement("div");
+      head.className = "peek-head";
+      head.setAttribute("role", "button");
+      head.tabIndex = 0;
+      head.innerHTML = '<span class="peek-arrow">▼</span>'
+        + '<span class="peek-label"></span><span class="peek-count"></span>';
+      head.querySelector(".peek-label").textContent = sec.label;
+      head.querySelector(".peek-count").textContent = groups[sec.id].length;
+      const toggle = () => {
+        const st = glanceOpen();
+        st[sec.id] = !st[sec.id];
+        store(GLANCE_KEY, JSON.stringify(st));
+        wrapEl.classList.toggle("open", st[sec.id]);
+      };
+      head.addEventListener("click", toggle);
+      head.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle();
+        }
+      });
+      const body = document.createElement("div");
+      body.className = "peek-body";
+      body.innerHTML = '<div class="peek-inner"><div class="peek-items">'
+        + "</div></div>";
+      const items = body.querySelector(".peek-items");
+      fillList(items, groups[sec.id], data);
+      if (sec.id === "today") items.appendChild(addRow);
+      wrapEl.append(head, body);
+      box.appendChild(wrapEl);
+    });
+  }
+
+  function fillList(box, items, data) {
+    box.innerHTML = "";
+    items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "task" + (item.done ? " done" : "");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = item.done;
+      cb.addEventListener("change", () => {
+        setTodo(item, cb.checked, data);
+        renderToday();
+      });
+      const text = document.createElement("div");
+      text.className = "task-text";
+      text.innerHTML = D.highlight(item.text);
+      row.append(cb, text);
+      if (item.note) {
+        const link = document.createElement("a");
+        link.className = "note-link";
+        link.href = "../notes/index.html#" + encodeURIComponent(item.note.id);
+        link.textContent = "↗ "
+          + ((item.note.title || "").trim() || "untitled");
+        link.title = "open the note";
+        row.appendChild(link);
+      }
+      box.appendChild(row);
+    });
+  }
+
+  // Type a to-do for today; it joins the simple list
+  const addEl = document.getElementById("add");
+  addEl.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const text = addEl.value.trim();
+    if (!text) return;
+    const data = loadTodos();
+    const task = {
+      done: false, indent: 0,
+      text: D.firstToken(text) ? text : text + " @today"
+    };
+    D.stampAnchor(task);
+    data.simple = data.simple.filter(t => t.text !== "");
+    data.simple.push(task);
+    store(TODO_KEY, JSON.stringify(data));
+    addEl.value = "";
+    renderToday();
+    addEl.focus();
+  });
+
+  // ---- Resize and fold the today sidebar ----
+
+  const aside = document.querySelector("aside");
+  const wrap = document.querySelector(".aside-wrap");
+  const sideWidth = w => Math.max(240, Math.min(520, Math.round(w)));
+
+  const savedWidth = parseInt(read(SIDE_KEY));
+  if (savedWidth) aside.style.flexBasis = sideWidth(savedWidth) + "px";
+  aside.classList.toggle("folded", read(FOLD_KEY) === "1");
+
+  function setFolded(folded) {
+    aside.classList.toggle("folded", folded);
+    store(FOLD_KEY, folded ? "1" : "0");
+  }
+  document.getElementById("fold").addEventListener("click",
+    () => setFolded(true));
+  document.querySelector(".unfold").addEventListener("click",
+    () => setFolded(false));
+
+  document.querySelector(".aside-handle").addEventListener("pointerdown", e => {
+    if (e.button !== 0 || aside.classList.contains("folded")) return;
+    e.preventDefault();
+    const right = wrap.getBoundingClientRect().right;
+    aside.classList.add("dragging");
+    wrap.classList.add("resizing");
+    document.body.style.cursor = "col-resize";
+    const move = ev => {
+      aside.style.flexBasis = sideWidth(right - ev.clientX) + "px";
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      aside.classList.remove("dragging");
+      wrap.classList.remove("resizing");
+      document.body.style.cursor = "";
+      store(SIDE_KEY, parseInt(aside.style.flexBasis));
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  });
+
+  // ---- Recent notes ----
+
+  function renderRecent() {
+    const box = document.querySelector(".recent");
+    box.innerHTML = "";
+    const data = loadNotes();
+    const list = (data ? data.notes : []).filter(n => !n.trashed)
+      .sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 4);
+    const all = document.createElement("a");
+    all.className = "note-card all";
+    all.href = "../notes/index.html";
+    all.innerHTML = ToolkitSidebar.icon("notes") + "<span>all notes</span>";
+    box.appendChild(all);
+    list.forEach(n => {
+      const a = document.createElement("a");
+      a.className = "note-card";
+      a.href = "../notes/index.html#" + encodeURIComponent(n.id);
+      const head = document.createElement("div");
+      head.className = "nc-head";
+      const name = document.createElement("div");
+      name.className = "nc-name";
+      name.textContent = (n.title || "").trim() || "untitled";
+      if (!(n.title || "").trim()) name.classList.add("untitled");
+      head.appendChild(name);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(n.date || "")) {
+        const [y, m, d] = n.date.split("-").map(Number);
+        const date = document.createElement("div");
+        date.className = "nc-date";
+        date.textContent = "@" + d + " "
+          + MONTH_NAMES[m - 1].slice(0, 3).toLowerCase() + " " + y;
+        head.appendChild(date);
+      }
+      const pv = document.createElement("div");
+      pv.className = "nc-preview";
+      (n.blocks || []).filter(b => b.type !== "divider" && b.html)
+        .slice(0, 5).forEach(b => {
+          const line = document.createElement("div");
+          line.className = "nc-line";
+          line.textContent = htmlText(b.html);
+          pv.appendChild(line);
+        });
+      a.append(head, pv);
+      box.appendChild(a);
+    });
+    const add = document.createElement("a");
+    add.className = "note-card new";
+    add.href = "../notes/index.html#new";
+    add.textContent = "+ new note";
+    box.appendChild(add);
+    const open = document.querySelector(".notes-slide").classList
+      .contains("open");
+    box.querySelectorAll("a").forEach(a => { a.tabIndex = open ? 0 : -1; });
+  }
+
+  // ---- Size, width and mode ----
+
+  let size = ["s", "m", "l"].includes(read(SIZE_KEY)) ? read(SIZE_KEY) : "m";
+  let width = ["normal", "wide", "full"].includes(read(WIDTH_KEY))
+    ? read(WIDTH_KEY) : "normal";
+
+  function applyClasses() {
+    app.classList.remove("size-s", "size-m", "size-l", "width-normal",
+      "width-wide", "width-full");
+    app.classList.add("size-" + size, "width-" + width);
+  }
+  applyClasses();
+
+  ToolkitSidebar.init({
+    active: "dashboard",
+    mode: {
+      apply: (m, anim) => {
+        if (anim) {
+          app.classList.add("theme-anim");
+          setTimeout(() => app.classList.remove("theme-anim"), 300);
+        }
+        app.classList.toggle("t-dark", m !== "light");
+        app.classList.toggle("t-light", m === "light");
+      },
+      initial: "dark"
+    },
+    page: "dashboard/index.html",
+    size: {
+      get: () => size,
+      set: v => {
+        size = v;
+        store(SIZE_KEY, v);
+        applyClasses();
+      }
+    },
+    width: {
+      get: () => width,
+      set: v => {
+        width = v;
+        store(WIDTH_KEY, v);
+        applyClasses();
+      }
+    }
+  });
+
+  ToolkitSidebar.title("dashboard");
+  renderHeading();
+  renderTools();
+  renderToday();
+  renderRecent();
+
+  // Keep up with other tabs, and roll over at midnight
+  window.addEventListener("storage", e => {
+    if (e.key === TODO_KEY || e.key === NOTES_KEY) renderToday();
+    if (e.key === NOTES_KEY) renderRecent();
+  });
+  let shownDay = new Date().getDate();
+  setInterval(() => {
+    if (new Date().getDate() !== shownDay) {
+      shownDay = new Date().getDate();
+      renderHeading();
+      renderToday();
+    }
+  }, 60000);
+
+  // Sync to-dos via Google Drive, as on the to-dos page
+  ToolSync.init({
+    file:     "to-dos.json",
+    keys:     [TODO_KEY, "todo-toggle-sections"],
+    onRemote: renderToday
+  });
+</script>
+</body>
+</html>

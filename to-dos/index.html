@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>To do</title>
+<title>to dos · toolkit</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -41,6 +41,8 @@
     --today-bg:   #134957;
     --past-bg:    rgba(19, 85, 92, 0.25);
     --drag-bg:    rgba(127, 219, 202, 0.08);
+    --future-head: #0b2133;
+    --shadow:     0 2px 10px rgba(0, 0, 0, 0.45);
   }
   .t-light {
     --bg:         #ecf2f2;
@@ -60,6 +62,8 @@
     --today-bg:   #cce4e1;
     --past-bg:    #dce7e8;
     --drag-bg:    rgba(12, 158, 154, 0.1);
+    --future-head: #f6fafa;
+    --shadow:     0 2px 8px rgba(36, 70, 75, 0.14);
   }
 
   /* ---- Toolbar ---- */
@@ -119,7 +123,7 @@
     border: 1px solid var(--border);
     color: var(--fg-muted);
     cursor: pointer;
-    font-size: 17px;
+    font-size: 15px;
     padding: 3px 10px;
     border-radius: 4px;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -129,7 +133,7 @@
     color: var(--fg);
   }
   #nav-label {
-    font-size: 17px;
+    font-size: 15px;
     color: var(--fg);
     font-weight: 600;
     min-width: 180px;
@@ -359,7 +363,7 @@
     appearance: none;
     -webkit-appearance: none;
     width: 16px; height: 16px; min-width: 16px;
-    border: 1.5px solid var(--accent);
+    border: 2px solid var(--accent);
     border-radius: 3px;
     cursor: pointer;
     /* Centre the box on the first line of text */
@@ -375,8 +379,8 @@
   .task input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
-    left: 4px; top: 1px;
-    width: 5px; height: 9px;
+    left: 3px; top: 0;
+    width: 4px; height: 8px;
     border: solid var(--bg);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
@@ -521,6 +525,74 @@
     white-space: nowrap;
   }
 
+  /* To-dos from notes: read-only text with a link back to the note */
+  .task .task-highlight.note-text { position: static; pointer-events: auto; }
+  .note-link {
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+  .note-link:hover { color: var(--accent); }
+
+  .toggle-count {
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: auto;
+    opacity: 0.75;
+  }
+  .hide-counts .toggle-count { visibility: hidden; }
+  .add-row { display: flex; gap: 10px; margin-bottom: 32px; }
+  .add-row .add-section-btn { margin-bottom: 0; }
+  .add-row .counts-btn { flex-shrink: 0; width: auto; }
+  .add-row .add-range-input { flex: 1; margin: 0; min-width: 0; }
+
+  /* Simple: the prompt above the list */
+  .simple-prompt {
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    display: flex;
+    font-size: 20px;
+    font-style: italic;
+    font-weight: 400;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+  }
+  .simple-prompt svg { flex-shrink: 0; }
+
+  /* Week: lighter headings for days to come in light mode; in dark
+     mode they, and to schedule's, match past days' headings */
+  .day-col.future .day-header { background: var(--future-head); }
+  .t-dark .day-col.future .day-header,
+  .day-col.later-col .day-header {
+    background: linear-gradient(var(--head-tint), var(--head-tint)),
+      linear-gradient(var(--past-bg), var(--past-bg)), var(--bg);
+  }
+  .day-col.later-col { background: var(--past-bg); }
+  .later-col .day-header {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  /* Month: a teal line, drawn over the grid, traces where each month
+     meets the next, with rounded turns */
+  #month-view { position: relative; }
+  #month-lines {
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    z-index: 4;
+  }
+  #month-lines path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-linecap: round;
+    stroke-width: 2;
+  }
+
   /* Typing a new date or range for the dates view */
   .add-range-input {
     background: transparent;
@@ -540,10 +612,22 @@
 
   /* Fixed title for the done toggle */
   .toggle-done { margin-top: 32px; }
+
+  /* To schedule and done: headings in the completed-task colour */
+  .toggle-muted .toggle-title,
+  .toggle-muted .toggle-arrow,
+  .toggle-muted .toggle-count,
+  .toggle-done .toggle-title,
+  .toggle-done .toggle-arrow,
+  .toggle-done .toggle-count { color: var(--done); }
+
+  /* Items sit in from their heading, level with its text */
+  #dates-view .toggle-body > .toggle-tasks,
+  #done-view .toggle-body > .toggle-tasks { padding-left: 40px; }
   .toggle-title {
     color: var(--accent);
     cursor: pointer;
-    flex: 1;
+    flex: 0 1 auto;
     font-size: 17px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -555,6 +639,7 @@
   .col-view {
     border: 1px solid var(--border);
     border-radius: 6px;
+    box-shadow: var(--shadow);
     display: grid;
     margin: 24px auto 60px;
     max-width: 1152px;
@@ -612,7 +697,7 @@
     letter-spacing: 0.04em;
   }
   .day-date {
-    font-size: 22px; font-weight: 600;
+    font-size: 19px; font-weight: 600;
     color: var(--fg); margin-top: 2px;
   }
   .day-col.today .day-name { color: var(--accent); }
@@ -650,6 +735,7 @@
   .year-month-card {
     border: 1px solid var(--border);
     border-radius: 6px;
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     min-height: 180px;
@@ -684,7 +770,7 @@
   }
   .year-month-tasks .task
     input[type="checkbox"]:checked::after {
-    left: 3px; top: 0; width: 4px; height: 8px;
+    left: 2.5px; top: -0.5px; width: 3px; height: 7px;
   }
 
   /* Calendar cells: wrapped lines start under the checkbox */
@@ -769,10 +855,13 @@
   .day-header,
   .year-month-title { background: var(--head-tint); }
   #month-view .month-head .day-header { background: none; }
+
+  /* Pinned day names in today's colours */
   #month-view .month-head {
     background: linear-gradient(var(--head-tint), var(--head-tint)),
-      var(--bg);
+      linear-gradient(var(--today-bg), var(--today-bg)), var(--bg);
   }
+  #month-view .month-head .day-name { color: var(--accent); }
 
   /* Month: its own scroll area, set below the toolbar, rounded */
   #month-view {
@@ -796,69 +885,25 @@
 </head>
 <body>
 <div id="app" class="t-dark size-m width-normal">
-  <div id="toolbar">
-    <a id="home-link" href="../index.html"
-      title="Back to toolkit">&lsaquo; Toolkit</a>
+  <!-- Slim bar for the calendar views' arrows and today button -->
+  <div id="toolbar" class="hidden">
     <div id="nav-controls" class="hidden">
       <button id="prev-nav">&larr;</button>
       <button id="today-btn">Today</button>
       <span id="nav-label"></span>
       <button id="next-nav">&rarr;</button>
     </div>
-    <div id="dropdown-controls">
-      <div class="dropdown" id="dd-style">
-        <div class="dropdown-btn">Week</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item"
-            data-value="simple">Simple</div>
-          <div class="dropdown-item"
-            data-value="dates">Dates</div>
-          <div class="dropdown-item active"
-            data-value="weekly">Week</div>
-          <div class="dropdown-item"
-            data-value="month">Month</div>
-          <div class="dropdown-item"
-            data-value="year">Year</div>
-          <div class="dropdown-item"
-            data-value="done">Done</div>
-        </div>
-      </div>
-      <div class="dropdown" id="dd-theme">
-        <div class="dropdown-btn">Dark</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item active"
-            data-value="t-dark">Dark</div>
-          <div class="dropdown-item"
-            data-value="t-light">Light</div>
-        </div>
-      </div>
-      <div class="dropdown" id="dd-size">
-        <div class="dropdown-btn">Medium</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item"
-            data-value="size-s">Small</div>
-          <div class="dropdown-item active"
-            data-value="size-m">Medium</div>
-          <div class="dropdown-item"
-            data-value="size-l">Large</div>
-        </div>
-      </div>
-      <div class="dropdown" id="dd-width">
-        <div class="dropdown-btn">Normal</div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item active"
-            data-value="width-normal">Normal</div>
-          <div class="dropdown-item"
-            data-value="width-wide">Wide</div>
-          <div class="dropdown-item"
-            data-value="width-full">Full</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div id="content">
     <div id="simple-view" class="hidden">
+      <div class="simple-prompt"><svg width="22" height="22"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7.5 15.5a4 4 0 0 1-.9-7.9 5 5 0 0 1 9.4-1.4 4 4 0 0 1
+          1.9 7.6 3.5 3.5 0 0 1-3.4 1.7z"/>
+        <circle cx="7" cy="18.6" r="1.3"/><circle cx="4.3" cy="21" r="0.8"/>
+        </svg>What do we need to get done?</div>
       <div id="simple-tasks" class="drop-zone"
         data-list="simple"></div>
     </div>
@@ -875,6 +920,7 @@
 </div>
 
 <script src="../sync.js"></script>
+<script src="../sidebar.js"></script>
 <script>
   const STORAGE_KEY = "todo-data";
   const THEME_KEY   = "todo-theme";
@@ -928,6 +974,7 @@
   // Mark the chosen option and show it on the button
   function setDropdownActive(ddId, value) {
     const dd = document.getElementById(ddId);
+    if (!dd) return;
     dd.querySelectorAll(".dropdown-item").forEach(item => {
       const on = item.dataset.value === value;
       item.classList.toggle("active", on);
@@ -937,73 +984,49 @@
     });
   }
 
-  document.querySelectorAll(
-    "#dd-style .dropdown-item"
-  ).forEach(item => {
-    item.addEventListener("click", e => {
-      e.stopPropagation();
-      currentView = item.dataset.value;
-      setDropdownActive("dd-style", currentView);
-      localStorage.setItem(VIEW_KEY, currentView);
-      document.getElementById("dd-style")
-        .classList.remove("open");
-      renderCurrentView();
-    });
-  });
+  // ---- Views, size and width (driven by the sidebar) ----
 
-  document.querySelectorAll(
-    "#dd-theme .dropdown-item"
-  ).forEach(item => {
-    item.addEventListener("click", e => {
-      e.stopPropagation();
-      animate("theme-anim", 300);
-      applyTheme(item.dataset.value);
-      setDropdownActive("dd-theme", currentTheme);
-      document.getElementById("dd-theme")
-        .classList.remove("open");
-    });
-  });
+  const VIEWS = ["simple", "dates", "weekly", "month", "year", "done"];
 
-  document.querySelectorAll(
-    "#dd-width .dropdown-item"
-  ).forEach(item => {
-    item.addEventListener("click", e => {
-      e.stopPropagation();
-      saveViewWidth(currentView, item.dataset.value);
-      applyWidth(item.dataset.value);
-      document.getElementById("dd-width").classList.remove("open");
+  // Switch view in place, keeping the address and sidebar in step
+  function showView(v) {
+    if (!VIEWS.includes(v)) return false;
+    currentView = v;
+    localStorage.setItem(VIEW_KEY, v);
+    history.replaceState(null, "", "#" + v);
+    renderCurrentView();
+    return true;
+  }
 
-      // Refit text boxes once the width change settles
-      setTimeout(() => {
-        document.querySelectorAll("textarea.task-input").forEach(t => {
-          t.style.height = "auto";
-          t.style.height = t.scrollHeight + "px";
-        });
-      }, 270);
-    });
-  });
+  function changeWidth(w) {
+    saveViewWidth(currentView, w);
+    applyWidth(w);
+    redrawMonthLines(300);
 
-  document.querySelectorAll(
-    "#dd-size .dropdown-item"
-  ).forEach(item => {
-    item.addEventListener("click", e => {
-      e.stopPropagation();
-      saveViewSize(currentView, item.dataset.value);
-      document.getElementById("dd-size")
-        .classList.remove("open");
-
-      // Let text boxes grow with the text, then fit them once done
-      const boxes = document.querySelectorAll("textarea.task-input");
-      boxes.forEach(t => { t.style.height = ""; });
-      animate("size-anim", 220, () => {
-        boxes.forEach(t => {
-          t.style.height = "auto";
-          t.style.height = t.scrollHeight + "px";
-        });
+    // Refit text boxes once the width change settles
+    setTimeout(() => {
+      document.querySelectorAll("textarea.task-input").forEach(t => {
+        t.style.height = "auto";
+        t.style.height = t.scrollHeight + "px";
       });
-      applySize(item.dataset.value);
+    }, 270);
+  }
+
+  function changeSize(size) {
+    saveViewSize(currentView, size);
+
+    // Let text boxes grow with the text, then fit them once done
+    const boxes = document.querySelectorAll("textarea.task-input");
+    boxes.forEach(t => { t.style.height = ""; });
+    animate("size-anim", 220, () => {
+      boxes.forEach(t => {
+        t.style.height = "auto";
+        t.style.height = t.scrollHeight + "px";
+      });
+      redrawMonthLines();
     });
-  });
+    applySize(size);
+  }
 
   // ---- Data ----
 
@@ -1788,8 +1811,16 @@
     const del = document.createElement("button");
     del.className = "delete-btn";
     del.textContent = "\u00d7";
-    del.addEventListener("click",
-      () => onDelete(task));
+    del.addEventListener("click", () => {
+      const before = localStorage.getItem(STORAGE_KEY);
+      onDelete(task);
+      if (window.ToolkitSidebar) {
+        ToolkitSidebar.toast("to do deleted", () => {
+          localStorage.setItem(STORAGE_KEY, before);
+          renderCurrentView();
+        });
+      }
+    });
 
     // Text wrapper with highlight overlay
     const wrap = document.createElement("div");
@@ -2127,9 +2158,13 @@
     arrow.textContent = "▼";
     const title = document.createElement("span");
     title.className = "toggle-title";
-    title.textContent = sec.name + " (" + items.length + ")";
+    title.textContent = sec.name;
+    const count = document.createElement("span");
+    count.className = "toggle-count";
+    count.textContent = items.length;
     header.appendChild(arrow);
     header.appendChild(title);
+    header.appendChild(count);
 
     // Added dates and ranges can be removed; their tasks stay
     if (sec.custom) {
@@ -2139,9 +2174,14 @@
       del.title = "Remove this date or range";
       del.addEventListener("click", e => {
         e.stopPropagation();
+        const before = localStorage.getItem(STORAGE_KEY);
         data.dateSections = data.dateSections.filter(c => c.id !== sec.id);
         saveData(data);
         renderDates();
+        ToolkitSidebar.toast("date removed", () => {
+          localStorage.setItem(STORAGE_KEY, before);
+          renderDates();
+        });
       });
       header.appendChild(del);
     }
@@ -2161,7 +2201,12 @@
       });
     }
 
-    items.forEach(({ src, task }) => {
+    items.forEach(item => {
+      if (item.note) {
+        tasks.appendChild(noteTaskEl(item));
+        return;
+      }
+      const { src, task } = item;
       const tEl = createTaskEl(
         task,
         () => saveData(data),
@@ -2204,7 +2249,7 @@
     body.appendChild(tasks);
 
     // Open or close in place so the change animates
-    [arrow, title].forEach(btn => {
+    [arrow, title, count].forEach(btn => {
       btn.addEventListener("click", () => {
         const st = loadToggleState();
         st[sec.id] = !(st[sec.id] !== false);
@@ -2255,14 +2300,32 @@
         if (!input.value.trim()) renderDates();
       });
     });
-    el.appendChild(btn);
+    // Show or hide how many items each section holds
+    const counts = document.createElement("button");
+    counts.className = "add-section-btn counts-btn";
+    const shown = () => localStorage.getItem(COUNTS_KEY) !== "0";
+    counts.textContent = shown() ? "hide counts" : "show counts";
+    counts.addEventListener("click", () => {
+      localStorage.setItem(COUNTS_KEY, shown() ? "0" : "1");
+      el.classList.toggle("hide-counts", !shown());
+      counts.textContent = shown() ? "hide counts" : "show counts";
+    });
+
+    const row = document.createElement("div");
+    row.className = "add-row";
+    row.append(btn, counts);
+    el.appendChild(row);
   }
+
+  const COUNTS_KEY = "todo-show-counts";
 
   function renderDates() {
     const data = loadData();
     const tState = loadToggleState();
     const el = document.getElementById("dates-view");
     el.innerHTML = "";
+    el.classList.toggle("hide-counts",
+      localStorage.getItem(COUNTS_KEY) === "0");
 
     const today = dayStart(new Date());
     const sections = dateSections(data);
@@ -2297,6 +2360,25 @@
         if (sec) buckets[sec.id].push({ src, task, r });
       });
     });
+    // Dated to-dos in notes join the same sections
+    noteTodos().forEach(item => {
+      if (item.task.done) {
+        done.push(item);
+        return;
+      }
+      const r = item.r;
+      if (r.end < today) {
+        overdue.push(item);
+        return;
+      }
+      const sec = sections.find(
+        s => r.start >= s.range.start && r.end <= s.range.end
+      ) || sections.find(
+        s => r.start <= s.range.end && r.end >= s.range.start
+      );
+      if (sec) buckets[sec.id].push(item);
+    });
+
     const byDate = (a, b) => a.r.start - b.r.start;
     const byOrder = (a, b) => (a.task.order ?? 1e9) - (b.task.order ?? 1e9)
       || (a.r && b.r ? a.r.start - b.r.start : 0);
@@ -2312,7 +2394,8 @@
     });
     buildAddRange(el, data);
     buildSection(el, { id: "to-schedule", name: "To schedule", token: "" },
-      toSchedule.sort(byOrder), data, tState, { addable: true });
+      toSchedule.sort(byOrder), data, tState,
+      { addable: true, cls: "toggle-muted" });
     buildSection(el, { id: "_done", name: "Done" },
       done.sort(byDoneAt), data, tState, { cls: "toggle-done" });
 
@@ -2325,6 +2408,100 @@
       if (row) row.focus();
     }
     saveData(data);
+  }
+
+  // ---- To-dos from notes ----
+
+  const NOTES_KEY = "notes-data";
+
+  function loadNotes() {
+    try {
+      const data = JSON.parse(localStorage.getItem(NOTES_KEY));
+      if (data && Array.isArray(data.notes)) return data;
+    } catch {}
+    return null;
+  }
+
+  function htmlText(html) {
+    const t = document.createElement("template");
+    t.innerHTML = String(html || "").replace(/<br>/g, " ");
+    return t.content.textContent;
+  }
+
+  // Every dated to-do in a note that isn't in the trash
+  function noteTodos() {
+    const data = loadNotes();
+    if (!data) return [];
+    const out = [];
+    data.notes.forEach(n => {
+      if (n.trashed || !Array.isArray(n.blocks)) return;
+      n.blocks.forEach(b => {
+        if (b.type !== "todo") return;
+        const text = htmlText(b.html).trim();
+        if (!text) return;
+        const anchor = dayStart(
+          new Date(b.anchorAt || n.updated || Date.now())
+        );
+        const r = textRange(text, anchor);
+        if (!r) return;
+        out.push({
+          block: b, note: n, r, src: "_note",
+          task: { done: !!b.checked, doneAt: b.doneAt, text }
+        });
+      });
+    });
+    return out;
+  }
+
+  // Tick or untick a note's to-do from here
+  function setNoteTodo(noteId, blockId, checked) {
+    const data = loadNotes();
+    const n = data && data.notes.find(x => x.id === noteId);
+    const b = n && n.blocks.find(x => x.id === blockId);
+    if (!b) return;
+    b.checked = checked;
+    if (checked) b.doneAt = Date.now();
+    else delete b.doneAt;
+    localStorage.setItem(NOTES_KEY, JSON.stringify(data));
+
+    // Mark the notes as changed so their next sync sends this tick
+    try {
+      const key = "sync-meta-notes.json";
+      const meta = JSON.parse(localStorage.getItem(key));
+      if (meta) {
+        meta.updated = Date.now();
+        localStorage.setItem(key, JSON.stringify(meta));
+      }
+    } catch {}
+  }
+
+  function noteTaskEl(item) {
+    const el = document.createElement("div");
+    el.className = "task note-task" + (item.task.done ? " done" : "");
+    el.title = "From the note " + (item.note.title || "untitled");
+
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = item.task.done;
+    box.addEventListener("change", () => {
+      setNoteTodo(item.note.id, item.block.id, box.checked);
+      renderDates();
+    });
+
+    const wrap = document.createElement("div");
+    wrap.className = "task-text-wrap";
+    const text = document.createElement("div");
+    text.className = "task-highlight note-text";
+    text.innerHTML = highlightDates(item.task.text);
+    wrap.appendChild(text);
+
+    const link = document.createElement("a");
+    link.className = "task-source note-link";
+    link.href = "../notes/index.html#" + encodeURIComponent(item.note.id);
+    link.textContent = "↗ " + (item.note.title.trim() || "untitled");
+
+    el.append(box, wrap, link);
+    return el;
   }
 
   // ---- Done ----
@@ -2503,6 +2680,7 @@
       let cls = "day-col";
       if (isToday(date))     cls += " today";
       else if (isPast(date)) cls += " past";
+      else                   cls += " future";
 
       const col = document.createElement("div");
       col.className = cls;
@@ -2613,6 +2791,62 @@
     renderMonth();
   }
 
+  // Trace each month's edge: along the top of its first days, down
+  // beside its first day, and along the bottom of the previous month's
+  // last days, rounding each turn
+  function drawMonthLines() {
+    const el = document.getElementById("month-view");
+    const old = document.getElementById("month-lines");
+    if (old) old.remove();
+    const cells = [...el.querySelectorAll(".day-col[data-date]")];
+    if (!cells.length) return;
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.id = "month-lines";
+    svg.setAttribute("width", el.scrollWidth);
+    svg.setAttribute("height", el.scrollHeight);
+    const R = 6;
+    const gridL = cells[0].offsetLeft;
+    const last = cells[6];
+    const gridR = last.offsetLeft + last.offsetWidth;
+    const top = c => c.offsetTop + 0.5;
+    cells.forEach((cell, i) => {
+      if (!cell.classList.contains("month-start") || i < 7) return;
+      const col = i % 7;
+      const y1 = top(cell);
+      let d;
+      if (col === 0) {
+        d = "M" + gridL + " " + y1 + "H" + gridR;
+      } else {
+        const below = cells[i + 7 - col];
+        const y2 = below ? top(below) : cell.offsetTop + cell.offsetHeight;
+        const x = cell.offsetLeft - 0.5;
+        d = "M" + gridL + " " + y2 + "H" + (x - R)
+          + "Q" + x + " " + y2 + " " + x + " " + (y2 - R)
+          + "V" + (y1 + R)
+          + "Q" + x + " " + y1 + " " + (x + R) + " " + y1
+          + "H" + gridR;
+      }
+      const path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    });
+    el.appendChild(svg);
+  }
+
+  // Redraw the line when the grid changes size
+  let linesFrame = 0;
+  function redrawMonthLines(delay = 0) {
+    if (currentView !== "month") return;
+    clearTimeout(linesFrame);
+    linesFrame = setTimeout(drawMonthLines, delay);
+  }
+  window.addEventListener("resize", () => redrawMonthLines(50));
+
+  // Cells grow as tasks are typed, so watch them too
+  const cellWatch = window.ResizeObserver
+    ? new ResizeObserver(() => redrawMonthLines(30)) : null;
+
   function renderMonth() {
     const data = loadData();
     const dated = collectDated(data);
@@ -2653,9 +2887,9 @@
 
       const header = document.createElement("div");
       header.className = "day-header";
-      header.innerHTML = '<div class="day-date" style="font-size:18px;">'
+      header.innerHTML = '<div class="day-date" style="font-size:16px;">'
         + (date.getDate() === 1
-          ? "1 " + MONTH_NAMES[date.getMonth()].slice(0, 3)
+          ? "1 " + MONTH_NAMES[date.getMonth()].slice(0, 3).toLowerCase()
           : date.getDate())
         + '</div>';
 
@@ -2687,6 +2921,13 @@
       el.appendChild(col);
     }
 
+    drawMonthLines();
+    if (cellWatch) {
+      cellWatch.disconnect();
+      el.querySelectorAll(".day-col[data-date]").forEach(c => {
+        cellWatch.observe(c);
+      });
+    }
     saveData(data);
 
     // Scroll to the start of the chosen month, else stay put
@@ -2699,11 +2940,13 @@
     updateMonthLabel();
   }
 
-  // Put the week holding a date just under the day names
+  // Put the week before a date's week just under the day names, so
+  // the month starts on the second row
   function scrollMonthTo(d) {
     const content = document.getElementById("month-view");
     const cell = document.querySelector(
-      '#month-view .day-col[data-date="' + dateKey(weekStart(d)) + '"]'
+      '#month-view .day-col[data-date="'
+      + dateKey(addDays(weekStart(d), -7)) + '"]'
     );
     if (!cell) return;
     const head = document.querySelector("#month-view .month-head");
@@ -2853,12 +3096,22 @@
     const hasNav = ["weekly", "month", "year"]
       .includes(currentView);
     navCtrl.classList.toggle("hidden", !hasNav);
+    document.getElementById("toolbar").classList.toggle("hidden", !hasNav);
     applySize(viewSize(currentView));
     applyWidth(viewWidth(currentView));
+    if (window.ToolkitSidebar) {
+      ToolkitSidebar.setActive(currentView);
+      ToolkitSidebar.refresh();
+    }
     views[currentView].classList.remove("hidden");
 
+    if (window.ToolkitSidebar) {
+      ToolkitSidebar.title(VIEW_TITLES[currentView], "to dos");
+    }
+
     // Animate only when switching to a different view
-    if (currentView !== shownView) {
+    const switched = currentView !== shownView;
+    if (switched) {
       document.getElementById("content").scrollTop = 0;
       monthJump = true;
       const v = views[currentView];
@@ -2874,7 +3127,40 @@
     if (currentView === "month")   renderMonth();
     if (currentView === "year")    renderYear();
     if (currentView === "done")    renderDone();
+    if (switched) restoreScroll();
   }
+
+  // ---- Remember scroll (simple, dates, year, done) ----
+
+  const SCROLL_KEY = "todo-scroll";
+  const SCROLL_VIEWS = ["simple", "dates", "year", "done"];
+  const VIEW_TITLES = { dates: "dates", done: "done", month: "month",
+    simple: "simple", weekly: "week", year: "year" };
+
+  function scrollMap() {
+    try { return JSON.parse(localStorage.getItem(SCROLL_KEY)) || {}; }
+    catch { return {}; }
+  }
+
+  function restoreScroll() {
+    if (!SCROLL_VIEWS.includes(currentView)) return;
+    const el = document.getElementById("content");
+    const top = scrollMap()[currentView] || 0;
+    el.scrollTop = top;
+    requestAnimationFrame(() => { el.scrollTop = top; });
+  }
+
+  let scrollTimer = 0;
+  document.getElementById("content").addEventListener("scroll", e => {
+    if (!SCROLL_VIEWS.includes(currentView)) return;
+    clearTimeout(scrollTimer);
+    const view = currentView, top = e.target.scrollTop;
+    scrollTimer = setTimeout(() => {
+      const map = scrollMap();
+      map[view] = Math.round(top);
+      try { localStorage.setItem(SCROLL_KEY, JSON.stringify(map)); } catch {}
+    }, 150);
+  });
 
   // ---- Theme / Size ----
 
@@ -2995,12 +3281,8 @@
 
   // ---- Init ----
 
+  // Older pages saved their own mode; the sidebar now shares one
   const savedTheme = localStorage.getItem(THEME_KEY);
-  if (savedTheme === "t-light"
-    || savedTheme === "t-dark") {
-    applyTheme(savedTheme);
-    setDropdownActive("dd-theme", savedTheme);
-  }
 
   // The toggle view is now the dates view
   let savedView = localStorage.getItem(VIEW_KEY);
@@ -3012,11 +3294,13 @@
       localStorage.setItem(SIZES_KEY, JSON.stringify(sizes));
     }
   } catch {}
-  if (["simple", "dates", "weekly", "month", "year", "done"]
-    .includes(savedView)) {
-    currentView = savedView;
-    setDropdownActive("dd-style", savedView);
-  }
+  const hashView = location.hash.slice(1);
+  if (VIEWS.includes(hashView)) savedView = hashView;
+  if (VIEWS.includes(savedView)) currentView = savedView;
+  window.addEventListener("hashchange", () => {
+    const v = location.hash.slice(1);
+    if (v !== currentView) showView(v);
+  });
 
   const savedWeek = localStorage.getItem(WEEK_KEY);
   if (savedWeek !== null) {
@@ -3030,6 +3314,33 @@
   if (savedYear !== null) {
     yearOffset = parseInt(savedYear);
   }
+
+  // Show ticks and edits made in the notes in another tab
+  window.addEventListener("storage", e => {
+    if (e.key === NOTES_KEY && currentView === "dates") renderDates();
+  });
+
+  // Sidebar: views, shared mode, and this view's size and width
+  ToolkitSidebar.init({
+    active: currentView,
+    mode: {
+      apply: (m, anim) => {
+        if (anim) animate("theme-anim", 300);
+        applyTheme(m === "light" ? "t-light" : "t-dark");
+      },
+      initial: savedTheme === "t-light" ? "light" : "dark"
+    },
+    onView: showView,
+    page: "to-dos/index.html",
+    size: {
+      get: () => currentSize.slice(5),
+      set: v => changeSize("size-" + v)
+    },
+    width: {
+      get: () => currentWidth.slice(6),
+      set: v => changeWidth("width-" + v)
+    }
+  });
 
   renderCurrentView();
 

@@ -1,100 +1,155 @@
 # Toolkit
 
-A [site](https://ecologibel.github.io/tools/) hosting a collection of lightweight browser-based tools that maintain content between sessions via localStorage, with optional sync across devices via [Google Drive](https://drive.google.com/).
+A [site](https://ecologibel.github.io/toolkit/) hosting a collection of lightweight browser-based tools that keep their content between sessions via localStorage, with optional sync across devices via [Google Drive](https://drive.google.com/).
 
-  1. [**R-codepad**](https://ecologibel.github.io/tools/r-codepad/): syntax-highlighted scratchpad for R code.
-  2. [**To dos**](https://ecologibel.github.io/tools/to-dos/): to do lists in several styles (simple, toggle, weekly, monthly, and yearly).
-  3. *Coming soon*: Google Calendar hours keeper with hours per calendar and simple visualisations
+  1. [**Dashboard**](https://ecologibel.github.io/toolkit/dashboard/): the toolkit's home page, with today's day and date, buttons for each tool, an *at a glance* list of upcoming to dos, and a quote that changes daily
+  2. [**Notes**](https://ecologibel.github.io/toolkit/notes/): block-based notes, similar to Notion, with folders, tags, tables, R code blocks and dated to dos
+  3. [**To dos**](https://ecologibel.github.io/toolkit/to-dos/): to do lists in six views (simple, dates, week, month, year and done)
+  4. [**Codepad**](https://ecologibel.github.io/toolkit/codepad/): a syntax-highlighted scratchpad for R code
+  5. *Coming soon*: Google Calendar hours keeper with hours per calendar and simple visualisations
+
+## Using the toolkit
+
+### Sidebar
+
+  - The sidebar on the left of every page links to each tool; click **to dos** to show or hide its six views
+  - The layers icon at the top returns to the dashboard
+  - The controls at the bottom switch between dark and light mode, change the text size and page width, and show sync status
+  - Press `Ctrl+K` on any page to jump to a note, folder, to dos view or codepad
+
+### Dashboard
+
+  - Opens whenever you visit the toolkit's address
+  - **notes** shows your four most recently edited notes; **to dos** shows its six views. Only one opens at a time
+  - The *at a glance* sidebar groups dated to dos (including to dos in notes) under today, tomorrow, rest of this week and next week; tick them off there or add a to do for today
+  - Drag the sidebar's dividing line to resize it, or click **»** to fold it away
+
+### Notes
+
+  - **Gallery:** search notes, pin notes to the top, colour their cards, sort by last edited, date or title, and filter by tag
+  - **Folders:** click a folder to show its notes; drag notes or folders onto a folder to move them; use a folder's **⋯** menu to rename it, add a subfolder, choose an icon or delete it
+  - **Trash:** drag notes onto the trash button at the bottom right, or use a note's **⋯** menu; trashed notes are deleted after 30 days
+  - **Export:** copy or download any note as markdown from its **⋯** menu
+  - **In a note:**
+    - Each note has a date (click to change it), tags, a pin toggle, its last edited time and a word count
+    - Type `/` for a menu of block types, or use markdown shortcuts: `#`, `##` and `###` for headings; `-`, `*` or `+` for bullets; `1.` for numbered lists; `[]` or `/to` for to dos; `>` or `/tog` for toggles; `"` for quotes; ` ``` ` for R code; `---` for a line; `/tab` for a table
+    - Format text with `Ctrl+B`, `Ctrl+I`, `Ctrl+E` (code), `Ctrl+Shift+S` (strikethrough), `Ctrl+Shift+H` (highlight) and `Ctrl+K` (link), or select text for the floating menu
+    - Drag blocks by their handle, press `Tab` and `Shift+Tab` to indent, and press `Ctrl+Z` and `Ctrl+Y` to undo and redo
+    - `@dates` and `#tags` are coloured as in the to dos; dated to dos also appear in the to dos dates view and on the dashboard
+
+### To dos
+
+  - Add `@dates` (e.g., `@today`, `@friday`, `@2/11`, `@next week`) and `#tags` to any to do
+  - **simple:** one list; **dates:** grouped by when they're due, with your own dates and ranges; **week**, **month** and **year:** calendars; **done:** ticked to dos by day
+  - Deleting a to do or date shows an **undo** button for a few seconds
+
+### Codepad
+
+  - R syntax highlighting with rainbow brackets, in [Ubuntu Mono](https://fonts.google.com/specimen/Ubuntu+Mono)
+  - Content is kept between sessions and synced if you sign in
 
 ## Sync
 
-  - Signing in with Google (button at bottom right) copies each tool's content to a hidden app folder in your own Google Drive.
-  - The site can only see its own files there, not the rest of your Drive.
-  - The newest edit wins; the overwritten copy is kept in localStorage as `sync-backup-<tool>.json`.
-  - Theme, view, and size settings stay on each device.
-  - Alt-click the button to sign out.
-  - Sync runs on the hosted site only, not from `file://`.
+  - Signing in with Google copies each tool's content to a hidden app folder in your own Google Drive
+  - Sign in with the **Sign in to sync** button at the bottom right of each tool, or the sync icon at the bottom of the sidebar
+  - The site can only see its own files there, not the rest of your Drive
+  - Each tool syncs its own file: `notes.json`, `to-dos.json` (also synced from the dashboard) and `r-codepad.json`
+  - The newest edit wins; the overwritten copy is kept in localStorage as `sync-backup-<file>`
+  - Mode, size, width and similar settings stay on each device
+  - Alt-click the sync button or icon to sign out
+  - Sync runs on the hosted site only, not from `file://`
+  - Ticking a note's to do from the to dos or dashboard reaches Drive the next time you open notes
 
 ## Setup
 
 ### 1. Check your Google account
 
-  - Open [Google Cloud Console](https://console.cloud.google.com/) and click the avatar at the top right.
-  - Confirm you're signed in to the Google account you'll use to sync.
-  - If not, click **Switch account** or **Add account** before going further. Projects belong to the account that creates them.
+  - Open [Google Cloud Console](https://console.cloud.google.com/) and click the avatar at the top right
+  - Confirm you're signed in to the Google account you'll use to sync
+  - If not, click **Switch account** or **Add account** before going further Projects belong to the account that creates them
 
 ### 2. Create a project
 
-  - Go to [Create a project](https://console.cloud.google.com/projectcreate).
+  - Go to [Create a project](https://console.cloud.google.com/projectcreate)
   - **Project name:** `tools`
   - **Location:** No organisation
-  - Click **Create**, then select the project in the picker at the top.
+  - Click **Create**, then select the project in the picker at the top
 
 ### 3. Enable the Drive API
 
-  - Go to the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) page.
-  - Click **Enable**.
+  - Go to the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) page
+  - Click **Enable**
 
 ### 4. Set up Google Auth Platform
 
-  - Go to [Google Auth Platform](https://console.cloud.google.com/auth/overview) and click **Get started**.
+  - Go to [Google Auth Platform](https://console.cloud.google.com/auth/overview) and click **Get started**
   - **App information**
     - **App name:** `Tools`
     - **User support email:** your Google account
-    - Click **Next**.
+    - Click **Next**
   - **Audience**
-    - Choose **External**.
-    - Click **Next**.
+    - Choose **External**
+    - Click **Next**
   - **Contact information**
     - **Email addresses:** your Google account
-    - Click **Next**.
+    - Click **Next**
   - **Finish**
-    - Tick the box agreeing to the Google API Services User Data Policy.
-    - Click **Continue**, then **Create**.
-  - Skip the optional **Branding** fields; adding a logo triggers Google verification.
+    - Tick the box agreeing to the Google API Services User Data Policy
+    - Click **Continue**, then **Create**
+  - Skip the optional **Branding** fields; adding a logo triggers Google verification
 
 ### 5. Add yourself as a test user
 
-  - In the left sidebar, click **Audience**.
-  - Leave **Publishing status** on **Testing**, so only listed test users can sign in.
-  - Under **Test users**, click **+ Add users**, enter your Google account, and click **Save**.
+  - In the left sidebar, click **Audience**
+  - Leave **Publishing status** on **Testing**, so only listed test users can sign in
+  - Under **Test users**, click **+ Add users**, enter your Google account, and click **Save**
 
 ### 6. Add the Drive scope
 
-  - In the left sidebar, click **Data access**, then **Add or remove scopes**.
-  - Under **Manually add scopes**, paste `https://www.googleapis.com/auth/drive.appdata`.
-  - Click **Add to table**, then **Update**, then **Save**.
+  - In the left sidebar, click **Data access**, then **Add or remove scopes**
+  - Under **Manually add scopes**, paste `https://www.googleapis.com/auth/drive.appdata`
+  - Click **Add to table**, then **Update**, then **Save**
 
 ### 7. Create the client ID
 
-  - In the left sidebar, click **Clients**, then **+ Create client**.
+  - In the left sidebar, click **Clients**, then **+ Create client**
   - **Application type:** Web application
   - **Name:** `Tools site`
   - **Authorised JavaScript origins:** click **+ Add URI** twice and enter:
     - `https://ecologibel.github.io`
     - `http://localhost:8000`
-  - Leave out `/tools` and any trailing slash.
-  - Leave **Authorised redirect URIs** empty.
-  - Click **Create** and copy the **Client ID** (ends in `.apps.googleusercontent.com`).
-  - The client secret isn't needed; keep it out of the code.
+  - Leave out `/toolkit` and any trailing slash
+  - Leave **Authorised redirect URIs** empty
+  - Click **Create** and copy the **Client ID** (ends in `.apps.googleusercontent.com`)
+  - The client secret isn't needed; keep it out of the code
 
 ### 8. Add the client ID to the site
 
-- In `sync.js`, replace the placeholder value of `CLIENT_ID` with your client ID.
-- Commit and push.
+  - In `sync.js`, replace the placeholder value of `CLIENT_ID` with your client ID
+  - Commit and push
 
 ### 9. Sign in
 
-  - Open the [to dos](https://ecologibel.github.io/tools/to-dos/) page on the device whose data you want to keep.
-  - Click **Sign in to sync** and choose your Google account.
-  - At "Google hasn't verified this app", click **Continue**, then allow access.
-  - The button changes to **Synced**.
-  - New origins can take from 5 minutes to a few hours to start working.
+  - Open each tool on the device whose data you want to keep
+  - Click **Sign in to sync** and choose your Google account
+  - At "Google hasn't verified this app", click **Continue**, then allow access
+  - The button changes to **Synced** and the sidebar's sync icon turns teal
+  - New origins can take from 5 minutes to a few hours to start working
+
+## Files
+
+  - `index.html`: opens the dashboard
+  - `dashboard/`, `notes/`, `to-dos/`, `codepad/`: one folder per tool
+  - `r-codepad/`: forwards the old codepad address to `codepad/`
+  - `sidebar.js`: the sidebar, quick switcher, tab icon and undo messages shared by every page
+  - `sync.js`: Google Drive sync
+  - `dates.js`: reads `@dates` for the dashboard
+  - CodeMirror (codepad) loads from [cdnjs](https://cdnjs.com/libraries/codemirror) and Ubuntu Mono from Google Fonts, so these need an internet connection; offline, code falls back to Consolas
 
 ## Test locally
 
-  - From the repo root, run `python -m http.server 8000`.
-  - Open [http://localhost:8000](http://localhost:8000).
+  - From the repo root, run `python -m http.server 8000`
+  - Open [http://localhost:8000](http://localhost:8000)
 
 ## Licence
 
