@@ -14,7 +14,7 @@
 (function () {
 
   // Paste the OAuth client ID from Google Cloud here
-  const CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com";
+  const CLIENT_ID = "162961094882-4v360khh8d3hohj1arp3g80lgkoipdc9.apps.googleusercontent.com";
 
   const API        = "https://www.googleapis.com/drive/v3/files";
   const POLL_EVERY = 60000;
