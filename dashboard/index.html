@@ -85,7 +85,7 @@
   .tools {
     display: grid;
     gap: 16px;
-    grid-template-columns: repeat(3, 9.5em);
+    grid-template-columns: repeat(4, 9.5em);
   }
   .tool {
     align-items: center;
@@ -362,7 +362,8 @@
   .peek-inner { min-height: 0; overflow: hidden; }
 
   /* Items sit in, level with the toggle's text */
-  .peek-items { padding: 6px 0 0 20px; }
+  /* Room on the right for each to do's focus button */
+  .peek-items { padding: 6px 24px 0 20px; }
 
   .task {
     align-items: flex-start;
@@ -416,6 +417,28 @@
     text-decoration: none;
   }
   .note-link:hover { color: var(--accent); }
+
+  /* Focus on a to do: a target shown on hover */
+  .task { position: relative; }
+  .task .focus-btn {
+    align-items: center;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    height: 1.4em;
+    opacity: 0;
+    padding: 0 3px;
+    position: absolute;
+    right: -24px;
+    top: 4px;
+    transition: opacity 0.15s;
+  }
+  .task .focus-btn svg { height: 16px; width: 16px; }
+  .task:hover .focus-btn, .task .focus-btn:focus-visible { opacity: 0.6; }
+  .task .focus-btn:hover { opacity: 1; }
   .add-row { align-items: center; display: flex; gap: 8px; margin-top: 4px; }
   .add-box {
     border: 2px solid var(--accent);
@@ -461,7 +484,7 @@
   }
   @media (max-width: 600px) {
     main { padding: 32px 20px; }
-    .tools { grid-template-columns: repeat(3, 1fr); }
+    .tools { grid-template-columns: repeat(4, 1fr); }
   }
 
   /* Brief colour fade while the mode changes */
@@ -480,7 +503,6 @@
     border: 2px solid transparent;
     border-radius: 5px;
   }
-  body #tool-sync { font-size: 16px; text-transform: lowercase; }
 </style>
 </head>
 <body>
@@ -497,6 +519,7 @@
         <button class="tool" type="button" data-tool="todos"
           aria-expanded="false"></button>
         <a class="tool" href="../codepad/index.html" data-tool="codepad"></a>
+        <a class="tool" href="../focus/index.html" data-tool="focus"></a>
       </div>
       <div class="views notes-slide"><div class="slide-inner">
         <div class="recent"></div>
@@ -619,7 +642,8 @@
 
   function renderHeading() {
     const now = new Date();
-    document.getElementById("day").textContent = DAY_NAMES[now.getDay()];
+    document.getElementById("day").textContent =
+      DAY_NAMES[now.getDay()].toLowerCase();
     document.getElementById("today-date").textContent = "@" + now.getDate()
       + " " + MONTH_NAMES[now.getMonth()].slice(0, 3).toLowerCase() + " "
       + now.getFullYear();
@@ -633,11 +657,13 @@
 
   function renderTools() {
     const icon = id => ToolkitSidebar.icon(id);
-    const label = { codepad: "codepad", notes: "notes", todos: "to dos" };
+    const label = { codepad: "codepad", focus: "focus", notes: "notes",
+      todos: "to dos" };
     document.querySelectorAll(".tool").forEach(t => {
       const id = t.dataset.tool;
       t.innerHTML = icon(id) + "<span>" + label[id] + "</span>"
-        + (id === "codepad" ? "" : '<span class="chev">▼</span>');
+        + (["notes", "todos"].includes(id) ? '<span class="chev">▼</span>'
+          : "");
     });
     const inner = document.querySelector(".views-inner");
     VIEWS.forEach(([id, name]) => {
@@ -668,6 +694,14 @@
     });
     store(PANEL_KEY, which);
   }
+
+  // Focus opens on the running timer, or the picker
+  document.querySelector('.tool[data-tool="focus"]')
+    .addEventListener("click", e => {
+      if (e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      ToolkitFocus.go();
+    });
 
   ["notes", "todos"].forEach(id => {
     document.querySelector('.tool[data-tool="' + id + '"]')
@@ -876,8 +910,33 @@
         link.title = "open the note";
         row.appendChild(link);
       }
+      if (!item.done) row.appendChild(focusBtn(item, data));
       box.appendChild(row);
     });
+  }
+
+  // The target button that opens a to do in focus mode
+  function focusBtn(item, data) {
+    const b = document.createElement("button");
+    b.className = "focus-btn";
+    b.type = "button";
+    b.title = "focus on this";
+    b.setAttribute("aria-label", "focus on this");
+    b.innerHTML = ToolkitSidebar.icon("focus");
+    b.addEventListener("click", () => {
+      if (item.note) {
+        ToolkitFocus.go({ blockId: item.block.id, kind: "note",
+          noteId: item.note.id }, item.text);
+        return;
+      }
+      if (!item.task.fid) {
+        item.task.fid = Date.now().toString(36)
+          + Math.random().toString(36).slice(2, 7);
+        store(TODO_KEY, JSON.stringify(data));
+      }
+      ToolkitFocus.go({ fid: item.task.fid, kind: "todo" }, item.text);
+    });
+    return b;
   }
 
   // Type a to-do for today; it joins the simple list

@@ -44,14 +44,14 @@
     --c-purple: #c792ea;
     --c-red:    #ef5350;
     --c-yellow: #ecc48d;
-    --r-com:   #2f5d69;
-    --r-const: #f78c6c;
+    --r-com:   #5a9a8e;
+    --r-const: #9ea3ec;
     --r-fg:    #d6deeb;
-    --r-fn:    #82aaff;
-    --r-kw:    #c792ea;
-    --r-num:   #f78c6c;
+    --r-fn:    #f4a46a;
+    --r-kw:    #97b7ff;
+    --r-num:   #9ea3ec;
     --r-op:    #7fdbca;
-    --r-str:   #addb67;
+    --r-str:   #9ccc8a;
   }
   .t-light {
     --accent:       #0c9e9a;
@@ -60,7 +60,7 @@
     --block-sel:    rgba(12, 158, 154, 0.12);
     --border:       #a3c4c6;
     --code-bg:      rgba(12, 158, 154, 0.08);
-    --code-block:   #f6fafa;
+    --code-block:   #ebf5f3;
     --code-fg:      #c9532b;
     --drag-bg:      rgba(12, 158, 154, 0.1);
     --fg:           #24292e;
@@ -79,14 +79,14 @@
     --c-purple: #8e44c4;
     --c-red:    #d73a49;
     --c-yellow: #a66f00;
-    --r-com:   #2f5d69;
-    --r-const: #c9532b;
-    --r-fg:    #24292e;
-    --r-fn:    #3b6fd6;
-    --r-kw:    #8e44c4;
-    --r-num:   #c9532b;
-    --r-op:    #0c9e9a;
-    --r-str:   #5f8a1c;
+    --r-com:   #4f8f82;
+    --r-const: #5e65d9;
+    --r-fg:    #1b4d42;
+    --r-fn:    #c43d00;
+    --r-kw:    #2d68e9;
+    --r-num:   #5e65d9;
+    --r-op:    #077a76;
+    --r-str:   #1f7a45;
   }
 
   /* Text size in a note */
@@ -391,7 +391,7 @@
     background: var(--head-tint);
     border-bottom: 1px solid var(--border);
     border-radius: 6px 6px 0 0;
-    padding: 24px 56px 18px 72px;
+    padding: 24px 56px 28px 72px;
   }
   .sheet.back-above { margin-top: 34px; }
 
@@ -445,13 +445,13 @@
     right: 18px;
   }
 
-  /* Trash: a floating button at the bottom right, above sync */
+  /* Trash: a floating button at the bottom right */
   #trash-fab {
     align-items: center;
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: 6px;
-    bottom: 52px;
+    bottom: 16px;
     box-shadow: var(--shadow);
     color: var(--fg-muted);
     cursor: pointer;
@@ -485,7 +485,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: 6px;
-    bottom: 106px;
+    bottom: 70px;
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
     max-height: 60vh;
     overflow-y: auto;
@@ -548,7 +548,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 12px;
+    margin-top: 20px;
   }
   .tag-chip {
     align-items: center;
@@ -952,6 +952,30 @@
   }
   .handle svg { fill: currentColor; }
   .block:hover > .handle { opacity: 0.6; }
+
+  /* Focus on a to do: a target to the right, shown on hover */
+  .block > .focus-btn {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    height: 22px;
+    justify-content: center;
+    opacity: 0;
+    padding: 0;
+    position: absolute;
+    right: -32px;
+    top: calc(3px + (var(--lh) - 22px) / 2);
+    transition: opacity 0.15s;
+    width: 22px;
+  }
+  .block > .focus-btn svg { height: 17px; width: 17px; }
+  .block:hover > .focus-btn, .block:focus-within > .focus-btn {
+    opacity: 0.6;
+  }
+  .block > .focus-btn:hover { opacity: 1; }
   .block > .handle:hover { background: var(--hover); opacity: 1; }
   .type-callout > .handle { top: calc(12px + (1.5em - 22px) / 2); }
   .type-code > .handle { top: 12px; }
@@ -1096,7 +1120,6 @@
     border-radius: 5px;
   }
 
-  body #tool-sync { font-size: 16px; text-transform: lowercase; }
   .gone { display: none !important; }
 </style>
 </head>
@@ -1732,10 +1755,6 @@
     list.forEach((f, i) => { f.order = i; });
   }
 
-  function saveOpen() {
-    localStorage.setItem(OPEN_KEY, JSON.stringify([...openFolders]));
-  }
-
   // ---- Routing ----
 
   function route() {
@@ -1756,7 +1775,6 @@
       subfolders(f.parent).forEach(x => openFolders.delete(x.id));
       openFolders.add(f.id);
     }
-    saveOpen();
     query = searchEl.value = "";
     tagFilter = "";
     showGallery(true);
@@ -1964,7 +1982,6 @@
       order: sibs.length, parent };
     folders.push(f);
     if (parent) openFolders.add(parent);
-    saveOpen();
     persist();
     renderGallery();
     const card = galBody.querySelector('[data-folder="' + f.id + '"]');
@@ -2040,7 +2057,7 @@
 
   // One open folder per level: opening one slides its open sibling
   // closed first; clicking an open folder slides it closed
-  let animateOpen = null, folderBusy = false, pruneOpen = false;
+  let animateOpen = null, folderBusy = false;
 
   function slideClosed(ids) {
     const els = ids.map(id => galBody.querySelector(
@@ -2066,7 +2083,6 @@
         openFolders.add(id);
         animateOpen = id;
       }
-      saveOpen();
       renderGallery();
     } finally {
       folderBusy = false;
@@ -2646,7 +2662,6 @@
         sibs.push(f);
         setOrder(sibs);
         if (act.into) openFolders.add(act.into);
-        saveOpen();
       }
     }
     gDrag = null;
@@ -2917,6 +2932,25 @@
       c.innerHTML = decorate(b.html);
     }
     el.appendChild(c);
+
+    // To dos can open in focus mode
+    if (b.type === "todo" && window.ToolkitFocus) {
+      const f = document.createElement("button");
+      f.className = "focus-btn";
+      f.type = "button";
+      f.title = "focus on this";
+      f.setAttribute("aria-label", "focus on this");
+      f.contentEditable = "false";
+      f.innerHTML = ToolkitSidebar.icon("focus");
+      f.addEventListener("mousedown", e => e.preventDefault());
+      f.addEventListener("click", e => {
+        e.stopPropagation();
+        save();
+        ToolkitFocus.go({ blockId: b.id, kind: "note", noteId: current.id },
+          blockText(b).trim());
+      });
+      el.appendChild(f);
+    }
     return el;
   }
 
@@ -5117,8 +5151,6 @@
     if (["s", "m", "l"].includes(k)) cardSize = k;
     const so = localStorage.getItem(SORT_KEY);
     if (["edited", "date", "title"].includes(so)) sortBy = so;
-    openFolders = new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || []);
-    pruneOpen = true;
   } catch {}
 
   function applyClasses() {
@@ -5135,18 +5167,8 @@
 
   load();
 
-  // Keep one open folder per level from earlier visits
-  if (pruneOpen) {
-    const seen = new Set();
-    [...openFolders].reverse().forEach(id => {
-      const f = byFolder(id);
-      if (!f) return;
-      const level = f.parent || "";
-      if (seen.has(level)) openFolders.delete(id);
-      else seen.add(level);
-    });
-    saveOpen();
-  }
+  // Folders start closed on each visit; drop what older versions kept
+  localStorage.removeItem(OPEN_KEY);
   window.addEventListener("hashchange", route);
   let arrangeFrame = 0;
   window.addEventListener("resize", () => {

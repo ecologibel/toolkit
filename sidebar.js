@@ -18,6 +18,11 @@
 //
 // Also shared by every page: the tab icon, tab titles (title), a quick
 // switcher on Ctrl+K, and an undo toast (toast).
+//
+// Focus mode's timer runs here too (window.ToolkitFocus), so it keeps
+// counting on every page: a chip shows the time left, and at 0 a banner
+// slides down and a chime plays. The focus page itself calls init with
+// bare: true, which skips the bar.
 
 (function () {
 
@@ -46,41 +51,47 @@
         + '<path d="M8 12.3l2.8 2.8 5.4-5.6"/>')
     },
     {
-      id: "simple", label: "Simple",
+      id: "simple", label: "simple",
       icon: svg('<path d="M9 6h11M9 12h11M9 18h11"/>'
         + dot(4.5, 6) + dot(4.5, 12) + dot(4.5, 18))
     },
     {
-      id: "dates", label: "Dates",
+      id: "dates", label: "dates",
       icon: svg('<rect x="3" y="4.5" width="18" height="16.5" rx="2"/>'
         + '<path d="M3 9.5h18M8 2.5v4M16 2.5v4M7 13.5h4M7 17h7"/>')
     },
     {
-      id: "weekly", label: "Week",
+      id: "weekly", label: "week",
       icon: svg('<rect x="3" y="4" width="18" height="16" rx="2"/>'
         + '<path d="M9 4v16M15 4v16"/>')
     },
     {
-      id: "month", label: "Month",
+      id: "month", label: "month",
       icon: svg('<rect x="3" y="4.5" width="18" height="16.5" rx="2"/>'
         + '<path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>'
         + dot(7.5, 13.5) + dot(12, 13.5) + dot(16.5, 13.5)
         + dot(7.5, 17.3) + dot(12, 17.3) + dot(16.5, 17.3))
     },
     {
-      id: "year", label: "Year",
+      id: "year", label: "year",
       icon: svg([3.5, 10, 16.5].map(x => [3.5, 10, 16.5].map(y =>
         '<rect x="' + x + '" y="' + y + '" width="4" height="4" rx="1"/>')
         .join("")).join(""))
     },
     {
-      id: "done", label: "Done",
+      id: "done", label: "done",
       icon: svg('<circle cx="12" cy="12" r="9"/>'
         + '<path d="M8 12.5l2.7 2.7L16 9.5"/>')
     },
     {
       id: "codepad", label: "codepad", page: "codepad/index.html",
       icon: svg('<path d="M8.5 7l-5 5 5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>')
+    },
+    {
+      // A timer ring, partly run down
+      id: "focus", label: "focus", page: "focus/index.html",
+      icon: svg('<circle cx="12" cy="13" r="8" opacity="0.35"/>'
+        + '<path d="M12 5a8 8 0 1 1-8 8M10 2h4"/>')
     }
   ];
 
@@ -299,6 +310,8 @@
       #tk-sidebar .tk-btn.has-active { color: #7fdbca; }
 
       /* Sync icon: dim when signed out, teal when signed in, red on error */
+      /* The sidebar icon is the only sync control */
+      #tool-sync { display: none !important; }
       #tk-sidebar #tk-sync { opacity: 0.55; }
       #tk-sidebar #tk-sync:hover { opacity: 1; }
       #tk-sidebar #tk-sync[hidden] { display: none; }
@@ -438,6 +451,105 @@
         padding: 2px 9px;
       }
       #tk-toast button:hover { border-color: #7fdbca; }
+      body:not(.has-sidebar) #tk-toast { left: 50%; }
+
+      /* Focus timer: a chip at the bottom left while it runs */
+      #tk-focus-chip {
+        align-items: center;
+        background: #01111f;
+        border: 1px solid #1e3a52;
+        border-radius: 6px;
+        bottom: 16px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+        color: #d6deeb;
+        cursor: pointer;
+        display: flex;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 14px;
+        gap: 8px;
+        left: 76px;
+        max-width: 300px;
+        padding: 6px 12px 6px 10px;
+        position: fixed;
+        text-decoration: none;
+        z-index: 1800;
+      }
+      #tk-focus-chip[hidden] { display: none; }
+      #tk-focus-chip:hover { border-color: #7fdbca; }
+      #tk-focus-chip .tk-fc-icon { color: #7fdbca; display: flex; }
+      #tk-focus-chip .tk-fc-time {
+        color: #7fdbca;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+      }
+      #tk-focus-chip .tk-fc-task {
+        color: #8a96a3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Focus timer: a banner that slides down at 0 */
+      #tk-focus-banner {
+        align-items: center;
+        background: #01111f;
+        border: 1px solid #7fdbca;
+        border-radius: 8px;
+        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+        color: #d6deeb;
+        display: flex;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 15px;
+        gap: 12px;
+        left: calc(50% + 30px);
+        max-width: min(560px, calc(100vw - 100px));
+        opacity: 0;
+        padding: 10px 10px 10px 16px;
+        pointer-events: none;
+        position: fixed;
+        top: 14px;
+        transform: translate(-50%, -140%);
+        transition: opacity 0.25s, transform 0.35s cubic-bezier(.2, 1.3, .4, 1);
+        z-index: 2000;
+      }
+      body:not(.has-sidebar) #tk-focus-banner { left: 50%; }
+      #tk-focus-banner.show {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+      }
+      #tk-focus-banner .tk-fb-main {
+        align-items: center;
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        display: flex;
+        font: inherit;
+        gap: 10px;
+        min-width: 0;
+        padding: 0;
+        text-align: left;
+      }
+      #tk-focus-banner .tk-fb-title { color: #7fdbca; font-weight: 600;
+        white-space: nowrap; }
+      #tk-focus-banner .tk-fb-task {
+        color: #8a96a3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #tk-focus-banner .tk-fb-close {
+        background: none;
+        border: none;
+        color: #6c7a89;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0 4px;
+      }
+      #tk-focus-banner .tk-fb-close:hover { color: #d6deeb; }
 
       /* Tighter spacing in short windows */
       @media (max-height: 640px) {
@@ -483,6 +595,11 @@
       a.href = root + (item.page || "to-dos/index.html#" + item.id);
       a.innerHTML = item.icon;
       a.addEventListener("click", e => {
+        if (item.id === "focus" && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          focusGo();
+          return;
+        }
         if (cfg.onView && cfg.onView(item.id)) {
           e.preventDefault();
           setActive(item.id);
@@ -736,6 +853,8 @@
     }));
     out.push({ href: root + "codepad/index.html", icon: icon("codepad"),
       kind: "page", name: "codepad" });
+    out.push({ href: root + "focus/index.html", icon: icon("focus"),
+      kind: "page", name: "focus" });
 
     const data = notesData();
     const folders = Array.isArray(data.folders) ? data.folders : [];
@@ -882,14 +1001,19 @@
     store(MODE_KEY, mode);
     cfg.mode.apply(mode, false);
 
-    // Remember the page so the toolkit's address reopens it
-    store(LAST_KEY, cfg.page || "to-dos/index.html");
-
     addStyles();
     addTabIcon();
-    build();
-    setActive(cfg.active);
-    refresh();
+    if (!cfg.bare) {
+      // Remember the page so the toolkit's address reopens it
+      store(LAST_KEY, cfg.page || "to-dos/index.html");
+      build();
+      setActive(cfg.active);
+      refresh();
+
+      // Focus mode returns to the last page left
+      window.addEventListener("pagehide", () => store(FROM_KEY, location.href));
+    }
+    startFocus();
 
     // Catch up if sync.js started before the sidebar
     if (syncState) setSync(syncState.state, syncState.label);
@@ -903,7 +1027,176 @@
         cfg.mode.apply(mode, true);
         refresh();
       }
+      if (e.key === FOCUS_KEY) checkFocus();
     });
+  }
+
+  // ---- Focus timer ----
+  //
+  // One focal task and its timer, kept in localStorage so the countdown
+  // carries on across pages and after the app is closed:
+  //   { task: { kind: "todo", fid } | { kind: "note", noteId, blockId },
+  //     text, minutes, state: "idle" | "running" | "paused" | "expired",
+  //     endAt, remaining, alerted, bannerOff }
+
+  const FOCUS_KEY = "focus-state";
+  const FROM_KEY  = "focus-from";
+  let focusChip = null, focusBanner = null, focusTimer = 0;
+  const focusListeners = [];
+
+  function focusGet() {
+    try {
+      const s = JSON.parse(read(FOCUS_KEY));
+      if (s && typeof s === "object") return s;
+    } catch {}
+    return { state: "idle" };
+  }
+
+  function focusSet(s) {
+    store(FOCUS_KEY, JSON.stringify(s));
+    checkFocus();
+  }
+
+  function sameRef(a, b) {
+    if (!a || !b || a.kind !== b.kind) return false;
+    return a.kind === "todo" ? a.fid === b.fid
+      : a.noteId === b.noteId && a.blockId === b.blockId;
+  }
+
+  // Milliseconds left on the timer
+  function focusLeft(s) {
+    if (s.state === "running") return Math.max(0, s.endAt - Date.now());
+    if (s.state === "paused") return s.remaining || 0;
+    if (s.state === "expired") return 0;
+    return (s.minutes || 0) * 60000;
+  }
+
+  // 600000 → "10:00"
+  function clock(ms) {
+    const secs = Math.ceil(ms / 1000);
+    return Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+  }
+
+  // Open focus mode, on a task if given. A different task resets the
+  // timer; without one, the picker shows unless a timer is going
+  function focusGo(ref, text) {
+    let s = focusGet();
+    if (ref) {
+      if (!sameRef(s.task, ref)) s = { state: "idle", task: ref };
+      if (text !== undefined) s.text = text;
+    } else if (!["running", "paused", "expired"].includes(s.state)) {
+      s = { state: "idle" };
+    }
+    store(FOCUS_KEY, JSON.stringify(s));
+    location.href = (cfg && cfg.root || "../") + "focus/index.html";
+  }
+
+  // A soft rising chime, made in the browser
+  function chime() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      if (ctx.state === "suspended") ctx.resume();
+      [[784, 0], [1046.5, 0.32], [1318.5, 0.64]].forEach(([f, t]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        const at = ctx.currentTime + t;
+        o.type = "sine";
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(0.16, at + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 1.8);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(at);
+        o.stop(at + 1.9);
+      });
+      setTimeout(() => ctx.close(), 3200);
+    } catch {}
+  }
+
+  const PLAY_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" '
+    + 'fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>';
+  const PAUSE_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" '
+    + 'fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/>'
+    + '<rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
+
+  function renderChip(s) {
+    const show = cfg && !cfg.bare
+      && ["running", "paused", "expired"].includes(s.state);
+    if (!show) {
+      if (focusChip) focusChip.hidden = true;
+      return;
+    }
+    if (!focusChip) {
+      focusChip = document.createElement("a");
+      focusChip.id = "tk-focus-chip";
+      focusChip.href = (cfg.root || "../") + "focus/index.html";
+      focusChip.title = "back to focus mode";
+      focusChip.innerHTML = '<span class="tk-fc-icon"></span>'
+        + '<span class="tk-fc-time"></span><span class="tk-fc-task"></span>';
+      document.body.appendChild(focusChip);
+    }
+    focusChip.hidden = false;
+    focusChip.dataset.state = s.state;
+    focusChip.querySelector(".tk-fc-icon").innerHTML =
+      s.state === "running" ? PLAY_ICON
+        : s.state === "paused" ? PAUSE_ICON : "⏰";
+    focusChip.querySelector(".tk-fc-time").textContent =
+      s.state === "expired" ? "time's up" : clock(focusLeft(s));
+    focusChip.querySelector(".tk-fc-task").textContent = s.text || "";
+  }
+
+  function renderBanner(s) {
+    const show = s.state === "expired" && !s.bannerOff;
+    if (!focusBanner) {
+      if (!show) return;
+      focusBanner = document.createElement("div");
+      focusBanner.id = "tk-focus-banner";
+      focusBanner.setAttribute("role", "alert");
+      focusBanner.innerHTML = '<button class="tk-fb-main" type="button">'
+        + '<span class="tk-fb-title">⏰ time\'s up</span>'
+        + '<span class="tk-fb-task"></span></button>'
+        + '<button class="tk-fb-close" type="button" aria-label="dismiss">'
+        + '×</button>';
+      const off = () => {
+        const cur = focusGet();
+        cur.bannerOff = true;
+        focusSet(cur);
+      };
+      focusBanner.querySelector(".tk-fb-main").addEventListener("click", () => {
+        off();
+        if (!cfg.bare) focusGo();
+      });
+      focusBanner.querySelector(".tk-fb-close").addEventListener("click", off);
+      document.body.appendChild(focusBanner);
+      void focusBanner.offsetWidth;
+    }
+    focusBanner.querySelector(".tk-fb-task").textContent = s.text || "";
+    focusBanner.classList.toggle("show", show);
+  }
+
+  // Each second: run out the timer, then update the chip and banner
+  function checkFocus() {
+    const s = focusGet();
+    if (s.state === "running" && Date.now() >= s.endAt) {
+      s.state = "expired";
+      s.remaining = 0;
+      const first = !s.alerted;
+      s.alerted = true;
+      s.bannerOff = false;
+      store(FOCUS_KEY, JSON.stringify(s));
+      if (first) chime();
+    }
+    renderChip(s);
+    renderBanner(s);
+    focusListeners.forEach(fn => fn(s));
+  }
+
+  function startFocus() {
+    clearInterval(focusTimer);
+    focusTimer = setInterval(checkFocus, 1000);
+    checkFocus();
   }
 
   // A view's icon, for pages that link to the tools
@@ -915,6 +1208,12 @@
   window.ToolkitSidebar = {
     folderIcon, folderIcons: Object.keys(FOLDER_ICONS), icon, init,
     openSwitcher, refresh, setActive, setSync, title, toast
+  };
+
+  window.ToolkitFocus = {
+    check: checkFocus, chime, clock, from: () => read(FROM_KEY),
+    get: focusGet, go: focusGo, left: focusLeft,
+    onTick: fn => focusListeners.push(fn), sameRef, set: focusSet
   };
 
 })();

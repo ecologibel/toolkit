@@ -31,7 +31,6 @@
     --border:     #1e3a52;
     --accent:     #7fdbca;
     --done:       #2f5d69;
-    --overdue:    #5fbfae;
     --scroll-thumb: #1e3a52;
     --head-tint:  rgba(1, 22, 39, 0.5);
     --hover:      #012a3f;
@@ -52,7 +51,6 @@
     --border:     #a3c4c6;
     --accent:     #0c9e9a;
     --done:       #2f5d69;
-    --overdue:    #077a76;
     --scroll-thumb: #bccfd2;
     --head-tint:  rgba(236, 242, 242, 0.5);
     --hover:      #d9e8ea;
@@ -142,13 +140,9 @@
 
   /* Lowercase headings, toggles and dropdowns */
   #toolbar, #toolbar button, .section-heading, .toggle-name-input,
-  .add-section-btn, .day-name, .year-month-title,
-  body #tool-sync {
+  .add-section-btn, .day-name, .year-month-title {
     text-transform: lowercase;
   }
-
-  /* Sync button text */
-  body #tool-sync { font-size: 16px; }
 
   /* ---- Custom dropdown ---- */
   .dropdown { position: relative; display: inline-block; }
@@ -264,11 +258,8 @@
     color: var(--accent);
   }
 
-  /* Overdue tasks in a darker highlight colour */
-  .task.overdue .task-highlight,
-  .task.overdue .task-highlight span {
-    color: var(--overdue);
-  }
+  /* Overdue tasks: only the date, in the completed colour */
+  .task.overdue .task-highlight .date-token { color: var(--done); }
 
   /* Tags echoed at the right of a task, each with a tinted background */
   .task-tags {
@@ -398,6 +389,33 @@
   }
   .task:hover .delete-btn { opacity: 0.6; }
   .task .delete-btn:hover { opacity: 1; }
+
+  /* Focus: a target that shows on hover or while editing */
+  .task .focus-btn {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 0;
+    height: calc(var(--task-fs, 18px) * 1.4);
+    opacity: 0;
+    padding: 0 2px;
+    transition: opacity 0.15s;
+  }
+  .task .focus-btn svg { height: 17px; width: 17px; }
+  .task:hover .focus-btn, .task:focus-within .focus-btn { opacity: 0.6; }
+  .task .focus-btn:hover, .task .focus-btn:focus-visible { opacity: 1; }
+  /* In calendar cells it floats over the text rather than taking room */
+  .day-tasks .task .focus-btn {
+    background: var(--bg);
+    border-radius: 4px;
+    position: absolute;
+    right: 22px;
+    top: 4px;
+  }
+  .year-month-tasks .task .focus-btn { display: none; }
 
   /* Drop zone highlight */
   .drop-zone.drag-active {
@@ -547,19 +565,20 @@
   .add-row .add-range-input { flex: 1; margin: 0; min-width: 0; }
 
   /* Simple: the prompt above the list */
+  /* Smaller than the tasks, in the completed colour */
   .simple-prompt {
     align-items: center;
     border-bottom: 1px solid var(--border);
-    color: var(--accent);
+    color: var(--done);
     display: flex;
-    font-size: 20px;
+    font-size: calc(var(--task-fs, 18px) * 0.85);
     font-style: italic;
     font-weight: 400;
     gap: 10px;
     margin-bottom: 16px;
     padding-bottom: 10px;
   }
-  .simple-prompt svg { flex-shrink: 0; }
+  .simple-prompt svg { flex-shrink: 0; height: 1.1em; width: 1.1em; }
 
   /* Week: lighter headings for days to come in light mode; in dark
      mode they, and to schedule's, match past days' headings */
@@ -889,7 +908,7 @@
   <div id="toolbar" class="hidden">
     <div id="nav-controls" class="hidden">
       <button id="prev-nav">&larr;</button>
-      <button id="today-btn">Today</button>
+      <button id="today-btn">today</button>
       <span id="nav-label"></span>
       <button id="next-nav">&rarr;</button>
     </div>
@@ -903,7 +922,7 @@
         <path d="M7.5 15.5a4 4 0 0 1-.9-7.9 5 5 0 0 1 9.4-1.4 4 4 0 0 1
           1.9 7.6 3.5 3.5 0 0 1-3.4 1.7z"/>
         <circle cx="7" cy="18.6" r="1.3"/><circle cx="4.3" cy="21" r="0.8"/>
-        </svg>What do we need to get done?</div>
+        </svg>what do we need to get done?</div>
       <div id="simple-tasks" class="drop-zone"
         data-list="simple"></div>
     </div>
@@ -1698,7 +1717,7 @@
       && (opts.listKey || opts.dragSrc)) {
       handle = document.createElement("span");
       handle.className = "drag-handle";
-      handle.title = "Drag to move";
+      handle.title = "drag to move";
       handle.innerHTML = DRAG_ICON;
       handle.draggable = true;
       handle.addEventListener("dragstart", e => {
@@ -1748,7 +1767,7 @@
     txt.rows = 1;
     txt.value = task.text;
     if (!opts.noPlaceholder) {
-      txt.placeholder = "New task...";
+      txt.placeholder = "new task...";
     }
     txt.addEventListener("keydown", e => {
       if (e.key === "Tab") {
@@ -1874,8 +1893,36 @@
     div.appendChild(cb);
     div.appendChild(wrap);
     div.appendChild(tagBox);
+    if (task.text !== "" && !opts.onCommit) {
+      div.appendChild(focusBtn(() => {
+        if (!task.fid) task.fid = newFid();
+        onUpdate();
+        ToolkitFocus.go({ fid: task.fid, kind: "todo" }, task.text);
+      }));
+    }
     div.appendChild(del);
     return div;
+  }
+
+  // ---- Focus mode ----
+
+  const newFid = () => Date.now().toString(36)
+    + Math.random().toString(36).slice(2, 7);
+
+  // The target button that opens a task in focus mode
+  function focusBtn(onClick) {
+    const b = document.createElement("button");
+    b.className = "focus-btn";
+    b.type = "button";
+    b.title = "focus on this";
+    b.setAttribute("aria-label", "focus on this");
+    b.innerHTML = ToolkitSidebar.icon("focus");
+    b.addEventListener("mousedown", e => e.preventDefault());
+    b.addEventListener("click", e => {
+      e.stopPropagation();
+      onClick();
+    });
+    return b;
   }
 
   function ensureEmpty(arr) {
@@ -1987,7 +2034,7 @@
         }
       );
       tEl.classList.add("mirrored");
-      tEl.title = "Dated task, also listed elsewhere";
+      tEl.title = "dated task, also listed elsewhere";
       el.appendChild(tEl);
     });
   }
@@ -2031,6 +2078,9 @@
   }
 
   // ---- Toggle ----
+
+  // The dates view's toggles start closed on each visit
+  localStorage.removeItem(TOGGLE_KEY);
 
   function loadToggleState() {
     try {
@@ -2147,7 +2197,7 @@
 
   // One collapsible section of the dates view
   function buildSection(el, sec, items, data, tState, opts = {}) {
-    const open = tState[sec.id] !== false;
+    const open = tState[sec.id] === true;
     const section = document.createElement("div");
     section.className = "toggle-section" + (opts.cls ? " " + opts.cls : "");
 
@@ -2171,7 +2221,7 @@
       const del = document.createElement("button");
       del.className = "toggle-delete-btn";
       del.textContent = "×";
-      del.title = "Remove this date or range";
+      del.title = "remove this date or range";
       del.addEventListener("click", e => {
         e.stopPropagation();
         const before = localStorage.getItem(STORAGE_KEY);
@@ -2202,6 +2252,11 @@
     }
 
     items.forEach(item => {
+      addItem(item);
+      (item.children || []).forEach(addItem);
+    });
+
+    function addItem(item) {
       if (item.note) {
         tasks.appendChild(noteTaskEl(item));
         return;
@@ -2222,13 +2277,13 @@
           section: sec.id, srcKey: src
         }
       );
-      tEl.title = "From " + sourceLabel(src);
+      tEl.title = "from " + sourceLabel(src);
       if (opts.showDate) {
         const r = taskRange(task, src);
         if (r && +r.start === +r.end) addSource(tEl, fmtDay(r.start, false));
       }
       tasks.appendChild(tEl);
-    });
+    }
 
     // A row for typing a new task into this section
     if (opts.addable) {
@@ -2252,7 +2307,7 @@
     [arrow, title, count].forEach(btn => {
       btn.addEventListener("click", () => {
         const st = loadToggleState();
-        st[sec.id] = !(st[sec.id] !== false);
+        st[sec.id] = st[sec.id] !== true;
         saveToggleState(st);
         arrow.classList.toggle("collapsed", !st[sec.id]);
         body.classList.toggle("collapsed", !st[sec.id]);
@@ -2281,7 +2336,7 @@
         if (save && spec) {
           if (!parseSpec(spec, dayStart(new Date()))) {
             input.classList.add("invalid");
-            input.title = "Try a day, month, or range such as 1 nov to 7 nov";
+            input.title = "try a day, month, or range such as 1 nov to 7 nov";
             return;
           }
           data.dateSections.push({ id: "d_" + Date.now(), spec });
@@ -2333,31 +2388,46 @@
     sections.forEach(sec => { buckets[sec.id] = []; });
     const overdue = [], toSchedule = [], done = [];
 
-    // Each task goes in the first section that holds its date
+    // Each task goes in the first section that holds its date. Open,
+    // undated subtasks follow the task they're indented under
     allLists(data).forEach(([src, list]) => {
+      const stack = [];
       list.forEach(task => {
         if (task.text === "") return;
+        const indent = task.indent || 0;
+        while (stack.length && stack[stack.length - 1].indent >= indent) {
+          stack.pop();
+        }
+        const parent = stack.length ? stack[stack.length - 1].item : null;
+        const r = taskRange(task, src);
+        if (parent && !task.done && !r) {
+          (parent.children = parent.children || []).push({ src, task });
+          stack.push({ indent, item: parent });
+          return;
+        }
+        let item = null;
         if (task.done) {
           done.push({ src, task });
-          return;
-        }
-        const r = taskRange(task, src);
-        if (!r) {
+        } else if (!r) {
           if (src === "simple" || src === "_later") {
-            toSchedule.push({ src, task });
+            item = { src, task };
+            toSchedule.push(item);
           }
-          return;
+        } else if (r.end < today) {
+          item = { src, task, r };
+          overdue.push(item);
+        } else {
+          const sec = sections.find(
+            s => r.start >= s.range.start && r.end <= s.range.end
+          ) || sections.find(
+            s => r.start <= s.range.end && r.end >= s.range.start
+          );
+          if (sec) {
+            item = { src, task, r };
+            buckets[sec.id].push(item);
+          }
         }
-        if (r.end < today) {
-          overdue.push({ src, task, r });
-          return;
-        }
-        const sec = sections.find(
-          s => r.start >= s.range.start && r.end <= s.range.end
-        ) || sections.find(
-          s => r.start <= s.range.end && r.end >= s.range.start
-        );
-        if (sec) buckets[sec.id].push({ src, task, r });
+        stack.push({ indent, item });
       });
     });
     // Dated to-dos in notes join the same sections
@@ -2478,7 +2548,7 @@
   function noteTaskEl(item) {
     const el = document.createElement("div");
     el.className = "task note-task" + (item.task.done ? " done" : "");
-    el.title = "From the note " + (item.note.title || "untitled");
+    el.title = "from the note " + (item.note.title || "untitled");
 
     const box = document.createElement("input");
     box.type = "checkbox";
@@ -2500,7 +2570,9 @@
     link.href = "../notes/index.html#" + encodeURIComponent(item.note.id);
     link.textContent = "↗ " + (item.note.title.trim() || "untitled");
 
-    el.append(box, wrap, link);
+    el.append(box, wrap, link, focusBtn(() => ToolkitFocus.go({
+      blockId: item.block.id, kind: "note", noteId: item.note.id
+    }, item.task.text)));
     return el;
   }
 
@@ -2528,16 +2600,16 @@
 
   // Short name for the list a task lives in
   function sourceLabel(src) {
-    if (src === "simple") return "Simple";
-    if (src === "_later") return "Later";
+    if (src === "simple") return "simple";
+    if (src === "_later") return "later";
     if (src.startsWith("toggle-")) {
       const sec = loadToggleSections()
         .find(s => "toggle-" + s.id === src);
-      return sec ? sec.name : "Toggle";
+      return sec ? sec.name : "toggle";
     }
     if (src.startsWith("_ym-")) {
       const [, y, m] = src.split("-");
-      return MONTH_NAMES[+m].slice(0, 3) + " " + y;
+      return MONTH_NAMES[+m].slice(0, 3).toLowerCase() + " " + y;
     }
     return fmtDay(keyToDate(src), false);
   }
@@ -2589,7 +2661,7 @@
     if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "done-empty";
-      empty.textContent = "No completed tasks yet.";
+      empty.textContent = "no completed tasks yet.";
       el.appendChild(empty);
       return;
     }
@@ -2648,7 +2720,7 @@
         },
         { mirror: true, noPlaceholder: true, onDoneChange: renderDone }
       );
-      tEl.title = "From " + sourceLabel(src);
+      tEl.title = "from " + sourceLabel(src);
       groupEl.appendChild(tEl);
     });
   }
@@ -2933,15 +3005,16 @@
     // Scroll to the start of the chosen month, else stay put
     if (monthJump) {
       monthJump = false;
-      scrollMonthTo(target);
+      scrollMonthTo(monthOffset === 0 ? new Date() : target);
     } else {
       el.scrollTop = keepTop;
     }
     updateMonthLabel();
   }
 
-  // Put the week before a date's week just under the day names, so
-  // the month starts on the second row
+  // Put the week before a date's week just under the day names: for
+  // today, the current week sits on the second row; for another
+  // month, its first week does
   function scrollMonthTo(d) {
     const content = document.getElementById("month-view");
     const cell = document.querySelector(
@@ -3114,6 +3187,8 @@
     if (switched) {
       document.getElementById("content").scrollTop = 0;
       monthJump = true;
+      // The month view always opens on today
+      if (currentView === "month") monthOffset = 0;
       const v = views[currentView];
       v.classList.remove("view-in");
       void v.offsetWidth;

@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>focus · toolkit</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  button, input { font-family: inherit; }
+  html, body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    height: 100%;
+  }
+
+  .t-dark {
+    --accent:     #7fdbca;
+    --bg:         #011627;
+    --bg-surface: #01111f;
+    --border:     #1e3a52;
+    --done:       #2f5d69;
+    --fg:         #d6deeb;
+    --fg-muted:   #6c7a89;
+    --hover:      #012a3f;
+    --shadow:     0 4px 22px rgba(0, 0, 0, 0.45);
+    --tint:       rgba(127, 219, 202, 0.1);
+    --glow:       rgba(127, 219, 202, 0.55);
+    --mark-bg:    rgba(236, 196, 141, 0.3);
+    --code-bg:    rgba(127, 219, 202, 0.08);
+    --code-fg:    #f78c6c;
+    --panel:      rgba(19, 85, 92, 0.25);
+  }
+  .t-light {
+    --accent:     #0c9e9a;
+    --bg:         #ecf2f2;
+    --bg-surface: #f6fafa;
+    --border:     #a3c4c6;
+    --done:       #2f5d69;
+    --fg:         #24292e;
+    --fg-muted:   #6a737d;
+    --hover:      #d9e8ea;
+    --shadow:     0 4px 18px rgba(36, 70, 75, 0.14);
+    --tint:       rgba(12, 158, 154, 0.1);
+    --glow:       rgba(12, 158, 154, 0.4);
+    --mark-bg:    rgba(255, 205, 64, 0.45);
+    --code-bg:    rgba(12, 158, 154, 0.08);
+    --code-fg:    #c9532b;
+    --panel:      #dce7e8;
+  }
+
+  #app {
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 0 20px 140px;
+  }
+
+  /* Brief colour fade while the mode changes */
+  .theme-anim, .theme-anim * {
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+      color 0.25s ease !important;
+  }
+
+  /* Leave focus mode (top left) and choose another task (top right):
+     dim until hovered */
+  #leave, #switch {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 6px;
+    left: 16px;
+    opacity: 0.45;
+    padding: 6px 8px;
+    position: fixed;
+    text-transform: lowercase;
+    top: 14px;
+    transition: opacity 0.15s, color 0.15s;
+    z-index: 10;
+  }
+  #leave:hover, #leave:focus-visible,
+  #switch:hover, #switch:focus-visible { color: var(--fg); opacity: 1; }
+  #leave svg, #switch svg { flex-shrink: 0; }
+  #switch { left: auto; right: 16px; }
+  #switch[hidden] { display: none; }
+
+  main {
+    margin: 0 auto;
+    max-width: 680px;
+    padding-top: 8vh;
+  }
+  section[hidden] { display: none; }
+
+  /* Entrance */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  .rise { animation: rise 0.35s ease both; }
+
+  /* ---- Picker ---- */
+  .pick-title {
+    color: var(--accent);
+    font-size: 1.5em;
+    font-style: italic;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+  #pick-input {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    color: var(--fg);
+    font-size: 17px;
+    outline: none;
+    padding: 12px 16px;
+    width: 100%;
+  }
+  #pick-input:focus { border-color: var(--accent); }
+  #pick-input::placeholder { color: var(--fg-muted); }
+  .pick-label {
+    color: var(--fg-muted);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    margin: 22px 4px 6px;
+    text-transform: lowercase;
+  }
+  .pick-row {
+    align-items: baseline;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--fg);
+    cursor: pointer;
+    display: flex;
+    font-size: 17px;
+    gap: 10px;
+    line-height: 1.4;
+    padding: 7px 12px;
+    text-align: left;
+    width: 100%;
+  }
+  .pick-row:hover, .pick-row.active {
+    background: var(--hover);
+    border-color: var(--border);
+  }
+  .pick-row .pr-text { flex: 1; min-width: 0; }
+  .pick-row .pr-src {
+    color: var(--fg-muted);
+    flex-shrink: 0;
+    font-size: 13px;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pick-row.add { color: var(--accent); }
+  .pick-empty {
+    color: var(--fg-muted);
+    font-style: italic;
+    padding: 8px 12px;
+  }
+
+  /* Dates and tags, as in the to dos */
+  .date-token, .mention-token { color: var(--accent); }
+  .tag-token {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  /* ---- Minutes ---- */
+  #minutes {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 32px;
+    min-height: 38px;
+  }
+  .min-label {
+    color: var(--fg-muted);
+    font-size: 13px;
+    margin-right: 4px;
+  }
+  /* Minute buttons: the notes folder cards' colour, with teal text */
+  .min-btn, #cheer-back {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: lowercase;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .min-btn:hover, #cheer-back:hover { border-color: var(--accent); }
+  .min-btn {
+    color: var(--accent);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+    padding: 8px 10px;
+  }
+  .min-btn.active { background: var(--tint); border-color: var(--accent); }
+
+  /* The cheer's button keeps the dashboard tool style */
+  #cheer-back { box-shadow: var(--shadow); color: var(--fg); }
+
+  /* Every button gives a little when pressed */
+  @keyframes press {
+    0% { transform: scale(1); }
+    35% { transform: scale(0.9); }
+    70% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  .press { animation: press 0.3s ease; }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ---- Focal task ---- */
+  #panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px 16px;
+  }
+  .focal {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+  }
+  input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 2px solid var(--accent);
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    height: 16px;
+    position: relative;
+    width: 16px;
+  }
+  input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  input[type="checkbox"]:checked::after {
+    border: solid var(--bg);
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 8px;
+    left: 3px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 4px;
+  }
+  #focal-done {
+    height: 20px;
+    margin-top: 6px;
+    width: 20px;
+  }
+  #focal-done:checked::after { height: 10px; left: 5px; top: 1px; width: 5px; }
+  #focal-text {
+    border-radius: 4px;
+    cursor: text;
+    flex: 1;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: -2px -6px;
+    min-width: 0;
+    outline: none;
+    overflow-wrap: anywhere;
+    padding: 2px 6px;
+    transition: background 0.15s;
+    white-space: pre-wrap;
+  }
+  #focal-text:hover { background: var(--tint); }
+  #focal-text:focus { background: var(--tint); box-shadow: 0 0 0 1px var(--border); }
+  #focal-text code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    color: var(--code-fg);
+    font-family: 'Ubuntu Mono', 'Consolas', 'Menlo', monospace;
+    font-size: 0.9em;
+    padding: 1px 4px;
+  }
+  #focal-text mark {
+    background: var(--mark-bg);
+    border-radius: 2px;
+    color: inherit;
+    padding: 0 1px;
+  }
+  #focal-text a { color: var(--accent); }
+  .focal.done #focal-text,
+  .focal.done #focal-text span {
+    color: var(--done);
+    text-decoration: line-through;
+  }
+
+  /* Timer: a ring that drains as time passes, centred, with its
+     controls inside, beneath the time */
+  .timer {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+  #ring {
+    height: 280px;
+    position: relative;
+    transition: opacity 0.3s;
+    width: 280px;
+  }
+  .ring-body svg {
+    height: 100%;
+    overflow: visible;
+    transform: rotate(-90deg);
+    width: 100%;
+  }
+  .ring-body circle { fill: none; stroke-width: 6; }
+  .ring-track { stroke: var(--tint); }
+  #ring-arc {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear;
+  }
+  /* Running: a slow breath and glow */
+  @keyframes breathe {
+    0%, 100% { filter: drop-shadow(0 0 2px var(--glow)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 16px var(--glow)); transform: scale(1.03); }
+  }
+  #ring.running .ring-body { animation: breathe 3.2s ease-in-out infinite; }
+  #ring.paused .ring-body { opacity: 0.55; }
+  .ring-body { transition: opacity 0.3s; }
+
+  /* Time's up: three quick pulses */
+  @keyframes alarm {
+    0%, 100% { transform: scale(1); }
+    50% { filter: drop-shadow(0 0 18px var(--glow)); transform: scale(1.07); }
+  }
+  #ring.expired .ring-body { animation: alarm 0.5s ease-in-out 3; }
+  .ring-body { height: 100%; width: 100%; }
+  .ring-face {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+  }
+  #c-time {
+    color: var(--accent);
+    font-size: 64px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  #c-state {
+    color: var(--fg-muted);
+    font-size: 13px;
+    height: 18px;
+    text-transform: lowercase;
+  }
+  #c-btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 6px;
+  }
+
+  /* A finished task needs no timer */
+  #focus.is-done .timer, #focus.is-done #minutes { visibility: hidden; }
+
+  /* Start, pause and reset: round icon buttons inside the ring */
+  .ctl {
+    align-items: center;
+    animation: pop 0.25s ease both;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    height: 42px;
+    justify-content: center;
+    padding: 0;
+    transition: border-color 0.15s, background 0.15s;
+    width: 42px;
+  }
+  .ctl:hover { background: var(--tint); border-color: var(--accent); }
+  .ctl svg { height: 18px; width: 18px; }
+  .ctl.press { animation: press 0.3s ease; }
+
+  /* ---- Subtasks ---- */
+  /* The first subtask, or the field, sits 10px below the task */
+  #subs { margin: 0 0 0 32px; }
+  #subs:empty + .add-sub { margin-top: 8px; }
+  .sub {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    padding: 4px 0 4px calc(var(--d, 0) * 24px);
+  }
+  .sub-text {
+    background: none;
+    border: none;
+    color: var(--fg);
+    flex: 1;
+    font-size: 17px;
+    min-width: 0;
+    outline: none;
+    padding: 2px 0;
+  }
+  .sub.done .sub-text { color: var(--done); text-decoration: line-through; }
+  .sub-del {
+    background: none;
+    border: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-size: 18px;
+    opacity: 0;
+    padding: 0 4px;
+    transition: opacity 0.15s;
+  }
+  .sub:hover .sub-del, .sub:focus-within .sub-del { opacity: 0.6; }
+  .sub-del:hover { opacity: 1 !important; }
+  .add-sub {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .add-sub .plus {
+    color: var(--fg-muted);
+    font-size: 17px;
+    text-align: center;
+    width: 16px;
+  }
+  #add-sub {
+    background: none;
+    border: none;
+    color: var(--fg);
+    flex: 1;
+    font-size: 17px;
+    outline: none;
+    padding: 2px 0;
+  }
+  #add-sub::placeholder {
+    color: var(--fg-muted);
+    font-style: italic;
+    opacity: 0.55;
+  }
+  .add-sub .plus { opacity: 0.55; }
+  .add-sub[hidden] { display: none; }
+
+
+  /* ---- Cheer ---- */
+  #cheer {
+    align-items: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    bottom: 32px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    left: 50%;
+    opacity: 0;
+    padding: 18px 28px;
+    pointer-events: none;
+    position: fixed;
+    transform: translate(-50%, 30px);
+    transition: opacity 0.3s, transform 0.45s cubic-bezier(.2, 1.4, .4, 1);
+  }
+  #cheer.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+  }
+  #cheer-text {
+    color: var(--accent);
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+  }
+  #cheer-back {
+    font-size: 14px;
+    padding: 8px 16px;
+    text-decoration: none;
+  }
+
+  @media (max-width: 600px) {
+    main { padding-top: 70px; }
+    .focal { flex-wrap: wrap; }
+    #ring { height: 240px; width: 240px; }
+    #c-time { font-size: 54px; }
+  }
+</style>
+</head>
+<body>
+<div id="app" class="t-dark">
+  <button id="leave" type="button" title="leave focus mode (esc)">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+    <span>leave focus</span>
+  </button>
+  <button id="switch" type="button" hidden>
+    <span>choose another task</span>
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+  </button>
+
+  <main>
+    <section id="picker" hidden>
+      <div class="pick-title">what are you focusing on?</div>
+      <input id="pick-input" autocomplete="off"
+        placeholder="search your to dos, or type a new one">
+      <div class="pick-label" id="pick-label"></div>
+      <div id="pick-list"></div>
+    </section>
+
+    <section id="focus" hidden>
+      <div class="timer">
+        <div id="ring">
+          <div class="ring-body">
+            <svg viewBox="0 0 200 200" aria-hidden="true">
+              <circle class="ring-track" cx="100" cy="100" r="92"/>
+              <circle id="ring-arc" cx="100" cy="100" r="92"/>
+            </svg>
+          </div>
+          <div class="ring-face">
+            <div id="c-time"></div>
+            <div id="c-state"></div>
+            <div id="c-btns"></div>
+          </div>
+        </div>
+      </div>
+      <div id="minutes"></div>
+      <div id="panel">
+        <div class="focal">
+          <input type="checkbox" id="focal-done" aria-label="done">
+          <div id="focal-text" spellcheck="true" title="click to edit"></div>
+        </div>
+        <div id="subs"></div>
+        <div class="add-sub" id="add-sub-row" style="margin-left: 32px">
+          <span class="plus">+</span>
+          <input id="add-sub" autocomplete="off" placeholder="break it down?">
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="cheer" role="status">
+    <div id="cheer-text"></div>
+    <a id="cheer-back" href="#"></a>
+  </div>
+</div>
+
+<script src="../sync.js"></script>
+<script src="../sidebar.js"></script>
+<script src="../dates.js"></script>
+<script>
+(function () {
+  const D = ToolkitDates, F = ToolkitFocus;
+  const TODO_KEY  = "todo-data";
+  const NOTES_KEY = "notes-data";
+  const MINUTES = [5, 10, 15, 20, 30, 45, 60];
+  const MORE    = [5, 10, 15, 20, 30, 45, 60];
+  const CHEERS = [
+    "you diiiid it", "look at you go", "you're on fire 🔥", "bam",
+    "nailed it", "aw yeah", "crushed it", "victory is yours",
+    "all over it", "right on man", "radical work dude",
+    "simply extraordinary", "yaaaaaass queen", "heeeeeell yeeh",
+    "too easy", "done and dusted", "smashed it", "boom 💥",
+    "chef's kiss", "absolute legend"
+  ];
+
+  const app = document.getElementById("app");
+  const $ = id => document.getElementById(id);
+
+  function read(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+
+  function store(key, value) {
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
+  const uid = () => Date.now().toString(36)
+    + Math.random().toString(36).slice(2, 7);
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function htmlText(html) {
+    const t = document.createElement("template");
+    t.innerHTML = String(html || "").replace(/<br>/g, " ");
+    return t.content.textContent;
+  }
+
+  // ---- Data ----
+
+  function loadTodos() {
+    try {
+      const data = JSON.parse(read(TODO_KEY));
+      if (data && Array.isArray(data.simple)) {
+        data.weekly = data.weekly || {};
+        data.toggleData = data.toggleData || {};
+        return data;
+      }
+    } catch {}
+    return { simple: [], toggleData: {}, weekly: {} };
+  }
+
+  function saveTodos(data) {
+    store(TODO_KEY, JSON.stringify(data));
+  }
+
+  function loadNotes() {
+    try {
+      const data = JSON.parse(read(NOTES_KEY));
+      if (data && Array.isArray(data.notes)) return data;
+    } catch {}
+    return null;
+  }
+
+  // Save the notes and mark them changed, so their next sync sends this
+  function saveNotes(data) {
+    store(NOTES_KEY, JSON.stringify(data));
+    try {
+      const meta = JSON.parse(read("sync-meta-notes.json"));
+      if (meta) {
+        meta.updated = Date.now();
+        store("sync-meta-notes.json", JSON.stringify(meta));
+      }
+    } catch {}
+  }
+
+  function lists(data) {
+    const out = [["simple", data.simple]];
+    Object.keys(data.toggleData).forEach(id => {
+      out.push(["toggle-" + id, data.toggleData[id]]);
+    });
+    Object.keys(data.weekly).forEach(k => out.push([k, data.weekly[k]]));
+    return out;
+  }
+
+  // The focal task, wherever it lives
+  function locate(ref) {
+    if (!ref) return null;
+    if (ref.kind === "todo") {
+      const data = loadTodos();
+      for (const [src, list] of lists(data)) {
+        const i = (list || []).findIndex(t => t.fid === ref.fid);
+        if (i >= 0) {
+          const task = list[i];
+          return { arr: list, data, done: !!task.done, i,
+            indent: task.indent || 0, item: task, kind: "todo", src,
+            text: task.text };
+        }
+      }
+      return null;
+    }
+    const notes = loadNotes();
+    const note = notes && notes.notes.find(n => n.id === ref.noteId
+      && !n.trashed);
+    const i = note ? note.blocks.findIndex(b => b.id === ref.blockId) : -1;
+    if (i < 0 || note.blocks[i].type !== "todo") return null;
+    const b = note.blocks[i];
+    return { arr: note.blocks, data: notes, done: !!b.checked, i,
+      indent: b.indent || 0, item: b, kind: "note", note,
+      text: htmlText(b.html).trim() };
+  }
+
+  function save(loc) {
+    if (loc.kind === "todo") saveTodos(loc.data);
+    else {
+      loc.note.updated = Date.now();
+      saveNotes(loc.data);
+    }
+  }
+
+  // Subtasks: the to dos indented under the focal one
+  function children(loc) {
+    const out = [];
+    let end = loc.i + 1;
+    for (let j = loc.i + 1; j < loc.arr.length; j++) {
+      const x = loc.arr[j];
+      if ((x.indent || 0) <= loc.indent) break;
+      if (loc.kind === "todo" && !x.text) continue;
+      end = j + 1;
+      if (loc.kind === "note" && x.type !== "todo") continue;
+      out.push({ depth: (x.indent || 0) - loc.indent - 1, item: x });
+    }
+    return { end, items: out };
+  }
+
+  const subText = (loc, x) => loc.kind === "todo" ? x.text
+    : htmlText(x.html);
+  const isDone = (loc, x) => loc.kind === "todo" ? !!x.done : !!x.checked;
+
+  function setDone(loc, x, done) {
+    if (loc.kind === "todo") x.done = done;
+    else x.checked = done;
+    if (done) x.doneAt = Date.now();
+    else delete x.doneAt;
+  }
+
+  // ---- Picker ----
+
+  let pickActive = -1, pickRows = [];
+
+  // Every open to do, with its date range
+  function candidates() {
+    const out = [];
+    const data = loadTodos();
+    lists(data).forEach(([src, list]) => {
+      (list || []).forEach(task => {
+        if (!task.text || task.done) return;
+        out.push({ kind: "todo", r: D.taskRange(task, src), task,
+          text: task.text });
+      });
+    });
+    const notes = loadNotes();
+    (notes ? notes.notes : []).forEach(n => {
+      if (n.trashed || !Array.isArray(n.blocks)) return;
+      n.blocks.forEach(b => {
+        if (b.type !== "todo" || b.checked) return;
+        const text = htmlText(b.html).trim();
+        if (!text) return;
+        const anchor = D.dayStart(
+          new Date(b.anchorAt || n.updated || Date.now()));
+        out.push({ block: b, kind: "note", note: n,
+          r: D.textRange(text, anchor), text });
+      });
+    });
+    return out;
+  }
+
+  function renderPicker() {
+    const q = $("pick-input").value.trim();
+    const today = D.dayStart(new Date());
+    let rows = candidates();
+    if (q) {
+      const ql = q.toLowerCase();
+      rows = rows.filter(c => c.text.toLowerCase().includes(ql));
+    } else {
+      rows = rows.filter(c => c.r && c.r.start <= today);
+    }
+    rows.sort((a, b) => (a.r ? +a.r.start : 9e15) - (b.r ? +b.r.start : 9e15));
+    rows = rows.slice(0, 40);
+    $("pick-label").textContent = q ? "matching to dos" : "today and overdue";
+
+    const box = $("pick-list");
+    box.innerHTML = "";
+    pickRows = [];
+    rows.forEach(c => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pick-row";
+      btn.innerHTML = '<span class="pr-text">' + D.highlight(c.text)
+        + "</span>";
+      if (c.kind === "note") {
+        const src = document.createElement("span");
+        src.className = "pr-src";
+        src.textContent = "↗ " + ((c.note.title || "").trim() || "untitled");
+        btn.appendChild(src);
+      }
+      btn.addEventListener("click", () => choose(c));
+      box.appendChild(btn);
+      pickRows.push({ btn, run: () => choose(c) });
+    });
+    if (!rows.length && !q) {
+      const e = document.createElement("div");
+      e.className = "pick-empty";
+      e.textContent = "nothing due today. search, or type a new to do.";
+      box.appendChild(e);
+    }
+    if (q) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pick-row add";
+      const text = D.firstToken(q) ? q : q + " @today";
+      btn.innerHTML = '<span class="pr-text">+ add “' + esc(text)
+        + "”</span>";
+      btn.addEventListener("click", () => create(q));
+      box.appendChild(btn);
+      pickRows.push({ btn, run: () => create(q) });
+    }
+
+    // Typing a new to do: Enter adds it unless a match is chosen
+    pickActive = q ? pickRows.length - 1 : -1;
+    markActive();
+  }
+
+  function markActive() {
+    pickRows.forEach((r, i) => r.btn.classList.toggle("active",
+      i === pickActive));
+  }
+
+  function choose(c) {
+    if (c.kind === "todo") {
+      const data = loadTodos();
+      let task = null;
+      lists(data).some(([, list]) => (list || []).some(t => {
+        const same = c.task.fid ? t.fid === c.task.fid
+          : t.text === c.task.text && !t.done && !t.fid;
+        if (same) task = t;
+        return same;
+      }));
+      if (!task) return;
+      if (!task.fid) {
+        task.fid = uid();
+        saveTodos(data);
+      }
+      begin({ fid: task.fid, kind: "todo" }, task.text);
+    } else {
+      begin({ blockId: c.block.id, kind: "note", noteId: c.note.id }, c.text);
+    }
+  }
+
+  // A new to do for today joins the simple list
+  function create(text) {
+    const data = loadTodos();
+    const task = { done: false, fid: uid(), indent: 0,
+      text: D.firstToken(text) ? text : text + " @today" };
+    D.stampAnchor(task);
+    data.simple = data.simple.filter(t => t.text !== "");
+    data.simple.push(task);
+    saveTodos(data);
+    begin({ fid: task.fid, kind: "todo" }, task.text);
+  }
+
+  function begin(ref, text) {
+    F.set({ minutes: 10, state: "idle", task: ref, text });
+    $("pick-input").value = "";
+    render();
+  }
+
+  $("pick-input").addEventListener("input", renderPicker);
+  $("pick-input").addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!pickRows.length) return;
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      pickActive = (pickActive + step + pickRows.length) % pickRows.length;
+      markActive();
+      pickRows[pickActive].btn.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && pickRows[pickActive]) {
+      e.preventDefault();
+      pickRows[pickActive].run();
+    }
+  });
+
+  // ---- Focal task ----
+
+  let shownSig = "", firstRender = true;
+
+  function render() {
+    const s = F.get();
+    let loc = locate(s.task);
+
+    // A finished task from last time gives way to the picker
+    if (firstRender && loc && loc.done && s.state === "idle") loc = null;
+    firstRender = false;
+    const picking = !loc;
+    $("picker").hidden = !picking;
+    $("focus").hidden = picking;
+    if (picking) $("switch").hidden = true;
+    if (picking) {
+      if (s.task) F.set({ state: "idle" });
+      if (shownSig !== "picker") {
+        shownSig = "picker";
+        $("picker").classList.remove("rise");
+        void $("picker").offsetWidth;
+        $("picker").classList.add("rise");
+      }
+      renderPicker();
+      $("pick-input").focus();
+      ToolkitSidebar.title("focus");
+      return;
+    }
+    if (shownSig !== "focus") {
+      shownSig = "focus";
+      $("focus").classList.remove("rise");
+      void $("focus").offsetWidth;
+      $("focus").classList.add("rise");
+    }
+
+    // Keep the chip and banner's copy of the text current; the timer
+    // starts at 10 minutes
+    if (s.text !== loc.text || !s.minutes) {
+      s.text = loc.text;
+      s.minutes = s.minutes || 10;
+      F.set(s);
+    }
+
+    if (document.activeElement !== $("focal-text")) showFocal(loc);
+    $("focal-done").checked = loc.done;
+    document.querySelector(".focal").classList.toggle("done", loc.done);
+    $("focus").classList.toggle("is-done", loc.done);
+    ToolkitSidebar.title(loc.text.slice(0, 40), "focus");
+    renderSubs(loc);
+    renderClock(s, true);
+  }
+
+  function renderSubs(loc) {
+    const box = $("subs");
+    box.innerHTML = "";
+    children(loc).items.forEach(({ depth, item }) => {
+      const row = document.createElement("div");
+      row.className = "sub" + (isDone(loc, item) ? " done" : "");
+      row.style.setProperty("--d", depth);
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = isDone(loc, item);
+      cb.addEventListener("change", () => {
+        const cur = locate(F.get().task);
+        const x = cur && cur.arr[loc.arr.indexOf(item)];
+        if (!x) return;
+        setDone(cur, x, cb.checked);
+        save(cur);
+        row.classList.toggle("done", cb.checked);
+      });
+      const input = document.createElement("input");
+      input.className = "sub-text";
+      input.value = subText(loc, item);
+      input.addEventListener("input", () => {
+        const cur = locate(F.get().task);
+        const x = cur && cur.arr[loc.arr.indexOf(item)];
+        if (!x) return;
+        if (cur.kind === "todo") {
+          x.text = input.value;
+          if (x.text) D.stampAnchor(x);
+        } else {
+          x.html = esc(input.value);
+        }
+        save(cur);
+      });
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          $("add-sub").focus();
+        } else if (e.key === "Backspace" && input.value === "") {
+          e.preventDefault();
+          remove(loc, item);
+        }
+      });
+      const del = document.createElement("button");
+      del.className = "sub-del";
+      del.type = "button";
+      del.textContent = "×";
+      del.title = "delete subtask";
+      del.addEventListener("click", () => remove(loc, item));
+      row.append(cb, input, del);
+      box.appendChild(row);
+    });
+
+    // To dos nest at most three levels deep
+    $("add-sub-row").hidden = loc.kind === "todo" && loc.indent >= 3;
+    $("add-sub").placeholder = box.children.length ? "" : "break it down?";
+  }
+
+  function remove(loc, item) {
+    const cur = locate(F.get().task);
+    const idx = loc.arr.indexOf(item);
+    if (!cur || idx < 0) return;
+    cur.arr.splice(idx, 1);
+    save(cur);
+    render();
+    $("add-sub").focus();
+  }
+
+  // Add a subtask after the last one
+  $("add-sub").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const text = $("add-sub").value.trim();
+    if (!text) return;
+    const loc = locate(F.get().task);
+    if (!loc) return;
+    const at = children(loc).end;
+    const indent = loc.indent + 1;
+    let x;
+    if (loc.kind === "todo") {
+      x = { done: false, indent, text };
+      D.stampAnchor(x);
+    } else {
+      x = { checked: false, color: null, html: esc(text), id: uid(),
+        indent, open: true, type: "todo" };
+    }
+    loc.arr.splice(at, 0, x);
+    save(loc);
+    $("add-sub").value = "";
+    render();
+    $("add-sub").focus();
+  });
+
+  // Tick the focal task: the timer stops and a cheer comes up
+  $("focal-done").addEventListener("change", () => {
+    const loc = locate(F.get().task);
+    if (!loc) return;
+    const done = $("focal-done").checked;
+    setDone(loc, loc.item, done);
+    save(loc);
+    const s = F.get();
+    if (done && s.state !== "idle") {
+      s.state = "idle";
+      delete s.endAt;
+      delete s.remaining;
+      s.bannerOff = true;
+      F.set(s);
+    }
+    render();
+    if (done) cheer();
+    else $("cheer").classList.remove("show");
+  });
+
+  // ---- Editing the focal task ----
+  //
+  // To dos are plain text, coloured as you type, as in the to dos. A
+  // note's to do keeps its formatting, with the notes' shortcuts.
+
+  const focalEl = $("focal-text");
+  let focalKind = null, focalBefore = "";
+
+  function showFocal(loc) {
+    focalKind = loc.kind;
+    focalEl.contentEditable = loc.kind === "todo" ? "plaintext-only" : "true";
+    focalEl.innerHTML = loc.kind === "todo" ? D.highlight(loc.text)
+      : D.decorate(loc.item.html);
+  }
+
+  function selRange() {
+    const s = getSelection();
+    return s.rangeCount ? s.getRangeAt(0) : null;
+  }
+
+  // Characters before the caret
+  function caretAt(el) {
+    const r = selRange();
+    if (!r || !el.contains(r.startContainer)) return null;
+    const pre = document.createRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(r.startContainer, r.startOffset);
+    return pre.toString().length;
+  }
+
+  function setCaret(el, pos) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const r = document.createRange();
+    let left = pos, placed = false;
+    while (walker.nextNode()) {
+      const n = walker.currentNode;
+      if (left <= n.length) {
+        r.setStart(n, left);
+        placed = true;
+        break;
+      }
+      left -= n.length;
+    }
+    if (!placed) {
+      r.selectNodeContents(el);
+      r.collapse(false);
+    }
+    r.collapse(true);
+    const s = getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+
+  // Keep only the formatting the notes keep
+  function clean(html) {
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    const TAGS = { B: "b", STRONG: "b", I: "i", EM: "i", U: "u", S: "s",
+      STRIKE: "s", DEL: "s", CODE: "code", MARK: "mark" };
+    const walk = node => {
+      let out = "";
+      node.childNodes.forEach(n => {
+        if (n.nodeType === 3) {
+          out += esc(n.data.replace(/\u200b/g, ""));
+        } else if (n.nodeType === 1) {
+          if (n.tagName === "BR") return;
+          const inner = walk(n);
+          if (!inner) return;
+          if (n.tagName === "A") {
+            const href = n.getAttribute("href") || "";
+            out += /^(https?:|mailto:)/i.test(href)
+              ? '<a href="' + esc(href) + '">' + inner + "</a>" : inner;
+            return;
+          }
+          const tag = TAGS[n.tagName];
+          out += tag ? "<" + tag + ">" + inner + "</" + tag + ">" : inner;
+        }
+      });
+      return out;
+    };
+    return walk(t.content);
+  }
+
+  // Save each change where the task lives, then re-colour in place
+  function saveFocal() {
+    const loc = locate(F.get().task);
+    if (!loc) return;
+    const pos = caretAt(focalEl);
+    if (loc.kind === "todo") {
+      const text = focalEl.textContent.replace(/\n/g, " ");
+      if (text === loc.item.text) return;
+      loc.item.text = text;
+      if (text) D.stampAnchor(loc.item);
+      save(loc);
+      const want = D.highlight(text);
+      if (focalEl.innerHTML !== want) {
+        focalEl.innerHTML = want;
+        if (pos !== null) setCaret(focalEl, pos);
+      }
+    } else {
+      const html = clean(focalEl.innerHTML);
+      if (html === loc.item.html) return;
+      loc.item.html = html;
+      const t = { anchorAt: loc.item.anchorAt,
+        anchorTok: loc.item.anchorTok || "", text: focalEl.textContent };
+      D.stampAnchor(t);
+      loc.item.anchorAt = t.anchorAt;
+      loc.item.anchorTok = t.anchorTok;
+      save(loc);
+      const want = D.decorate(html);
+      if (focalEl.innerHTML !== want) {
+        focalEl.innerHTML = want;
+        if (pos !== null) setCaret(focalEl, pos);
+      }
+    }
+  }
+
+  // Wrap or unwrap the selection, as Ctrl+E and friends do in notes
+  function toggleWrap(tag) {
+    const r = selRange();
+    if (!r || r.collapsed || !focalEl.contains(r.commonAncestorContainer)) {
+      return;
+    }
+    const node = r.commonAncestorContainer;
+    const inTag = (node.nodeType === 1 ? node : node.parentElement)
+      .closest(tag);
+    const sel = document.createRange();
+    if (inTag && focalEl.contains(inTag)) {
+      const first = inTag.firstChild, last = inTag.lastChild;
+      inTag.replaceWith(...inTag.childNodes);
+      sel.setStartBefore(first);
+      sel.setEndAfter(last);
+    } else {
+      const el = document.createElement(tag);
+      el.appendChild(r.extractContents());
+      el.querySelectorAll(tag).forEach(x => x.replaceWith(...x.childNodes));
+      r.insertNode(el);
+      sel.selectNodeContents(el);
+    }
+    const s = getSelection();
+    s.removeAllRanges();
+    s.addRange(sel);
+    saveFocal();
+  }
+
+  focalEl.addEventListener("focus", () => {
+    focalBefore = focalEl.textContent;
+  });
+  focalEl.addEventListener("input", saveFocal);
+  focalEl.addEventListener("keydown", e => {
+    const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focalEl.blur();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      focalEl.blur();
+      return;
+    }
+    if (focalKind !== "note") {
+      // Plain text: no formatting shortcuts
+      if (mod && ["b", "i", "u"].includes(key)) e.preventDefault();
+      return;
+    }
+    const wraps = { e: [false, "code"], h: [true, "mark"], s: [true, "s"] };
+    if (mod && wraps[key] && wraps[key][0] === e.shiftKey) {
+      e.preventDefault();
+      toggleWrap(wraps[key][1]);
+    }
+  });
+  focalEl.addEventListener("paste", e => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain").replace(/\s+/g, " ");
+    document.execCommand("insertText", false, text);
+  });
+
+  // Leaving the text: an emptied task gets its words back
+  focalEl.addEventListener("blur", () => {
+    if (!focalEl.textContent.trim()) {
+      const loc = locate(F.get().task);
+      if (loc) {
+        if (loc.kind === "todo") loc.item.text = focalBefore;
+        else loc.item.html = esc(focalBefore);
+        save(loc);
+      }
+    }
+    render();
+  });
+
+  // ---- Timer ----
+
+  const PLAY = '<svg viewBox="0 0 24 24" width="13" height="13" '
+    + 'fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>';
+  const PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" '
+    + 'fill="currentColor"><rect x="6" y="4.5" width="4" height="15" '
+    + 'rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
+
+  const RESET = '<svg viewBox="0 0 24 24" width="14" height="14" '
+    + 'fill="none" stroke="currentColor" stroke-width="2.2" '
+    + 'stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/>'
+    + '<path d="M4.5 4v4.5H9"/></svg>';
+  const RING = 2 * Math.PI * 92;
+
+  // A round icon button, named on hover
+  function ctl(html, label, fn) {
+    const b = document.createElement("button");
+    b.className = "ctl";
+    b.type = "button";
+    b.dataset.ctl = label;
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.innerHTML = html;
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  // The ring, its controls and the minute buttons
+  function renderClock(s, force) {
+    if ($("focus").hidden) return;
+    // Minutes to choose from before starting; time to add once started.
+    // The row is rebuilt only when it changes kind, so a pressed button
+    // stays put and shows its press
+    const mins = $("minutes");
+    const kind = s.state === "idle" ? "pick" : "more";
+    if (force || kind !== mins.dataset.kind) {
+      mins.dataset.kind = kind;
+      mins.innerHTML = "";
+      if (kind === "more") {
+        const lab = document.createElement("span");
+        lab.className = "min-label";
+        lab.textContent = "add time";
+        mins.appendChild(lab);
+        MORE.forEach(m => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "min-btn more";
+          b.textContent = "+" + m;
+          b.addEventListener("click", () => addTime(m));
+          mins.appendChild(b);
+        });
+      } else {
+        MINUTES.forEach(m => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "min-btn";
+          b.dataset.m = m;
+          b.textContent = m;
+          b.title = m + " minutes";
+          b.addEventListener("click", () => setMinutes(m));
+          mins.appendChild(b);
+        });
+      }
+    }
+    if (kind === "pick") {
+      mins.querySelectorAll(".min-btn").forEach(b => {
+        b.classList.toggle("active", +b.dataset.m === s.minutes);
+      });
+    }
+
+    // Only the controls that apply; reset whenever time has been used
+    if (force || s.state !== renderClock.state) {
+      renderClock.state = s.state;
+      const btns = $("c-btns");
+      btns.innerHTML = "";
+      if (s.state === "idle") btns.appendChild(ctl(PLAY, "start", start));
+      if (s.state === "paused") btns.appendChild(ctl(PLAY, "resume", start));
+      if (s.state === "running") btns.appendChild(ctl(PAUSE, "pause", pause));
+      if (s.state !== "idle") btns.appendChild(ctl(RESET, "reset", reset));
+    }
+
+    // Added time refills the ring in proportion to the new total
+    const chosen = (s.minutes || 10) * 60000;
+    const total = s.state === "idle" ? chosen : s.total || chosen;
+    const left = s.state === "idle" ? total : F.left(s);
+    $("c-time").textContent = F.clock(left);
+    $("c-state").textContent = s.state === "paused" ? "paused"
+      : s.state === "expired" ? "time's up" : "";
+    const frac = Math.min(1, left / total);
+    $("ring-arc").style.strokeDasharray = RING;
+    $("ring-arc").style.strokeDashoffset = RING * (1 - frac);
+    $("ring").className = s.state;
+    $("switch").hidden = s.state === "running" || s.state === "paused";
+  }
+
+  function update(fn) {
+    const s = F.get();
+    fn(s);
+    F.set(s);
+  }
+
+  function setMinutes(m) {
+    update(s => {
+      s.minutes = m;
+      s.state = "idle";
+      delete s.endAt;
+      delete s.remaining;
+    });
+  }
+
+  function start() {
+    update(s => {
+      const left = s.state === "paused" ? s.remaining : s.minutes * 60000;
+      if (s.state !== "paused") s.total = left;
+      s.state = "running";
+      s.endAt = Date.now() + left;
+      delete s.remaining;
+      s.alerted = false;
+      s.bannerOff = false;
+    });
+  }
+
+  function pause() {
+    update(s => {
+      s.remaining = Math.max(0, s.endAt - Date.now());
+      s.state = "paused";
+      delete s.endAt;
+    });
+  }
+
+  // Reset stops the countdown and returns it to the chosen time
+  function reset() {
+    update(s => {
+      s.state = "idle";
+      delete s.endAt;
+      delete s.remaining;
+      delete s.total;
+      s.bannerOff = true;
+    });
+  }
+
+  // Add time while counting down, or start again after 0
+  function addTime(m) {
+    const ms = m * 60000;
+    update(s => {
+      if (s.state === "running") {
+        s.endAt += ms;
+        s.total = (s.total || s.minutes * 60000) + ms;
+      } else if (s.state === "paused") {
+        s.remaining += ms;
+        s.total = (s.total || s.minutes * 60000) + ms;
+      } else {
+        s.state = "running";
+        s.endAt = Date.now() + ms;
+        s.total = ms;
+        s.alerted = false;
+        s.bannerOff = true;
+      }
+    });
+  }
+
+  $("switch").addEventListener("click", () => {
+    F.set({ state: "idle" });
+    $("cheer").classList.remove("show");
+    render();
+  });
+
+  // ---- Cheer and leaving ----
+
+  function backTarget() {
+    const from = F.from();
+    if (from && !/\/focus\//.test(from)) return from;
+    return "../to-dos/index.html#dates";
+  }
+
+  function backLabel(href) {
+    if (/\/to-dos\//.test(href)) return "back to to dos";
+    if (/\/notes\//.test(href)) return "back to notes";
+    if (/\/codepad\//.test(href)) return "back to codepad";
+    return "back to the dashboard";
+  }
+
+  let lastCheer = -1;
+  function cheer() {
+    let i;
+    do { i = Math.floor(Math.random() * CHEERS.length); }
+    while (i === lastCheer && CHEERS.length > 1);
+    lastCheer = i;
+    $("cheer-text").textContent = CHEERS[i];
+    const href = backTarget();
+    $("cheer-back").href = href;
+    $("cheer-back").textContent = backLabel(href);
+    const c = $("cheer");
+    c.classList.remove("show");
+    void c.offsetWidth;
+    c.classList.add("show");
+  }
+
+  function leave() {
+    location.href = backTarget();
+  }
+  $("leave").addEventListener("click", leave);
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    const a = document.activeElement;
+    if (a && a.tagName === "INPUT" && a.type !== "checkbox" && a.value) {
+      a.blur();
+      return;
+    }
+    leave();
+  });
+
+  // ---- Start ----
+
+  ToolkitSidebar.init({
+    bare: true,
+    mode: {
+      apply: (m, anim) => {
+        if (anim) {
+          app.classList.add("theme-anim");
+          setTimeout(() => app.classList.remove("theme-anim"), 300);
+        }
+        app.classList.toggle("t-dark", m !== "light");
+        app.classList.toggle("t-light", m === "light");
+      },
+      initial: "dark"
+    },
+    page: "focus/index.html"
+  });
+
+  render();
+  F.onTick(s => renderClock(s));
+
+  // Smoother than the shared once-a-second check
+  setInterval(() => {
+    const s = F.get();
+    if (s.state === "running") renderClock(s);
+  }, 250);
+
+  // Keep up with edits in other tabs, unless typing here
+  window.addEventListener("storage", e => {
+    if (![TODO_KEY, NOTES_KEY, "focus-state"].includes(e.key)) return;
+    const a = document.activeElement;
+    if (a && a.tagName === "INPUT" && a.type !== "checkbox"
+      && a.id !== "pick-input") return;
+    if (a === $("focal-text")) return;
+    render();
+  });
+
+  // Every button gives a little when pressed
+  document.addEventListener("pointerdown", e => {
+    const b = e.target.closest("button, #cheer-back");
+    if (!b || b.disabled) return;
+    b.classList.remove("press");
+    void b.offsetWidth;
+    b.classList.add("press");
+    b.addEventListener("animationend", () => b.classList.remove("press"),
+      { once: true });
+  });
+
+  ToolSync.init({
+    file:     "to-dos.json",
+    keys:     [TODO_KEY, "todo-toggle-sections"],
+    onRemote: render
+  });
+})();
+</script>
+</body>
+</html>

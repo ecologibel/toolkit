@@ -1,7 +1,8 @@
 // ---- Shared dates ----
 //
 // The to-dos' @date reading, for pages that show to-dos without being
-// the to-dos page (the dashboard). Exposed as window.ToolkitDates.
+// the to-dos page (the dashboard and focus mode). Exposed as
+// window.ToolkitDates.
 
 (function () {
 
@@ -216,8 +217,59 @@
     return out + highlightTags((text || "").slice(last));
   }
 
+  // A note's html with @dates and #tags wrapped in coloured spans, as
+  // the notes show them; code and links are left alone
+  const TAG_PATTERN = /(^|\s)(#[^\s#]+)/g;
+  function decorate(html) {
+    if (!/[@#]/.test(html)) return html;
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    const nodes = [];
+    const walker = document.createTreeWalker(t.content, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const p = walker.currentNode.parentElement;
+      if (!p || !p.closest("code, a")) nodes.push(walker.currentNode);
+    }
+    nodes.forEach(node => {
+      const text = node.data, marks = [];
+      let m;
+      DATE_PATTERN.lastIndex = 0;
+      while ((m = DATE_PATTERN.exec(text))) {
+        marks.push([m.index, m.index + m[0].length, "date-token"]);
+      }
+      TAG_PATTERN.lastIndex = 0;
+      while ((m = TAG_PATTERN.exec(text))) {
+        const tag = m[2].replace(/[.,;:!?)\]]+$/, "");
+        const start = m.index + m[1].length, end = start + tag.length;
+        if (tag.length > 1 && !marks.some(x => start < x[1] && end > x[0])) {
+          marks.push([start, end, "tag-token"]);
+        }
+      }
+      if (!marks.length) return;
+      marks.sort((a, b) => a[0] - b[0]);
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      marks.forEach(([a, z, cls]) => {
+        if (a < last) return;
+        if (a > last) {
+          frag.appendChild(document.createTextNode(text.slice(last, a)));
+        }
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = text.slice(a, z);
+        frag.appendChild(span);
+        last = z;
+      });
+      if (last < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(last)));
+      }
+      node.replaceWith(frag);
+    });
+    return t.innerHTML;
+  }
+
   window.ToolkitDates = {
-    addDays, dateKey, dayStart, firstToken, highlight, keyToDate,
+    addDays, dateKey, dayStart, decorate, firstToken, highlight, keyToDate,
     parseSpec, stampAnchor, taskRange, textRange
   };
 
