@@ -604,14 +604,15 @@
   .simple-prompt svg { flex-shrink: 0; height: 1.1em; width: 1.1em; }
 
   /* Week: lighter headings for days to come in light mode; in dark
-     mode they, and to schedule's, match past days' headings */
-  .day-col.future .day-header { background: var(--future-head); }
+     mode they match past days' headings. To schedule looks like a day
+     to come */
+  .day-col.future .day-header,
+  .day-col.later-col .day-header { background: var(--future-head); }
   .t-dark .day-col.future .day-header,
-  .day-col.later-col .day-header {
+  .t-dark .day-col.later-col .day-header {
     background: linear-gradient(var(--head-tint), var(--head-tint)),
       linear-gradient(var(--past-bg), var(--past-bg)), var(--bg);
   }
-  .day-col.later-col { background: var(--past-bg); }
   .later-col .day-header {
     display: flex;
     flex-direction: column-reverse;
@@ -667,6 +668,13 @@
   /* Items sit in from their heading, level with its text */
   #dates-view .toggle-body > .toggle-tasks,
   #done-view .toggle-body > .toggle-tasks { padding-left: 40px; }
+
+  /* Room below a section's to dos to click and add another */
+  #dates-view .toggle-body > .toggle-tasks::after {
+    content: '';
+    display: block;
+    height: 12px;
+  }
   .toggle-title {
     color: var(--accent);
     cursor: pointer;
@@ -698,6 +706,12 @@
   }
   #weekly-view .day-col:nth-child(4) { border-right: none; }
   #weekly-view .day-col:nth-child(n+5) { border-top: 1px solid var(--border); }
+
+  /* Week: day and date on one line, dim for past days, teal for today
+     and full colour for days to come */
+  #weekly-view .day-name { color: var(--fg); font-size: 16px; }
+  #weekly-view .day-col.past .day-name { color: var(--fg-muted); }
+  #weekly-view .day-col.today .day-name { color: var(--accent); }
 
   /* Today's header carries a small label */
   .today-tag {
@@ -821,7 +835,7 @@
     background: var(--today-bg);
   }
   .year-month-title {
-    font-size: 16px; font-weight: 600;
+    font-size: 14px; font-weight: 600;
     color: var(--fg); padding: 8px 5px 8px 7.5px;
     border-bottom: 1px solid var(--border);
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -922,8 +936,6 @@
   .width-full .col-view,
   .width-full #year-view { max-width: 100%; }
 
-  /* Week: the to schedule column matches past days */
-  .day-col.later-col { background: var(--past-bg); }
 
   /* Calendar headings sit halfway between their cell and the page
      colour, in both modes */
@@ -936,7 +948,7 @@
     background: linear-gradient(var(--head-tint), var(--head-tint)),
       linear-gradient(var(--today-bg), var(--today-bg)), var(--bg);
   }
-  #month-view .month-head .day-name { color: var(--accent); }
+  #month-view .month-head .day-name { color: var(--accent); font-size: 13px; }
 
   /* Month: its own scroll area, set below the toolbar, rounded */
   #month-view {
@@ -2197,13 +2209,6 @@
     return b;
   }
 
-  function ensureEmpty(arr) {
-    if (!arr.length
-      || arr[arr.length - 1].text !== "") {
-      arr.push({ text: "", done: false, indent: 0 });
-    }
-  }
-
   function setupDropZone(el, listKey) {
     el.addEventListener("dragover",
       handleZoneDragOver);
@@ -2225,6 +2230,23 @@
     );
   }
 
+  // Click below the simple list to start a new to do at its end
+  document.getElementById("simple-view").addEventListener("click", e => {
+    if (e.target.closest(".task, button, .simple-prompt, a")) return;
+    const tasks = document.getElementById("simple-tasks");
+    const last = tasks.lastElementChild;
+    if (last && e.clientY < last.getBoundingClientRect().bottom) return;
+    const blank = [...tasks.querySelectorAll("textarea")]
+      .find(t => !t.value);
+    if (blank) {
+      blank.focus();
+      return;
+    }
+    pendingAdd = "simple";
+    renderSimple();
+    focusLast("simple");
+  });
+
   // Enter in a list: the text after the cursor (or a blank task) goes
   // directly beneath; at the very start, a blank task goes above
   let pendingAt = null;
@@ -2236,7 +2258,9 @@
     const cur = list[i];
     if (!cur) return;
     const indent = cur.indent || 0;
-    let focusAt, caret = 0;
+    const pending = opts.noPlaceholder || opts.listKey === "simple";
+    let focusAt;
+    const caret = 0;
     if (before) {
       cur.text = before;
       stampAnchor(cur);
@@ -2244,22 +2268,21 @@
         const nt = { done: false, indent, text: after };
         stampAnchor(nt);
         list.splice(i + 1, 0, nt);
-      } else if (!opts.noPlaceholder) {
+      } else if (!pending) {
         list.splice(i + 1, 0, { done: false, indent, text: "" });
       }
       focusAt = i + 1;
     } else {
-      if (!opts.noPlaceholder) {
+      if (!pending) {
         list.splice(i, 0, { done: false, indent, text: "" });
       }
-      focusAt = opts.noPlaceholder ? i : i + 1;
-      if (opts.noPlaceholder) caret = 0;
+      focusAt = pending ? i : i + 1;
     }
     setList(data, opts.listKey, list);
     saveData(data);
 
-    // Calendar lists drop blank tasks when drawn, so ask for this one
-    if (opts.noPlaceholder && !(before && after)) {
+    // Lists drop blank tasks when drawn, so ask for this one
+    if (pending && !(before && after)) {
       const kept = list.filter(t => t.text !== "");
       const k = kept.indexOf(cur);
       pendingAt = { indent, listKey: opts.listKey,
@@ -2388,7 +2411,11 @@
     const data = loadData();
     const el = document.getElementById("simple-tasks");
     el.innerHTML = "";
-    ensureEmpty(data.simple);
+
+    // No standing blank row: one shows only for an empty list, or where
+    // Enter or a click below the list asks for it
+    const list = prepList(data, "simple");
+    if (!list.length) list.push({ done: false, indent: 0, text: "" });
     saveData(data);
 
     data.simple.forEach((task, i) => {
@@ -2672,9 +2699,11 @@
     }
 
     // A row for typing a new task into this section
-    if (opts.addable) {
+    // A new-task row shows for an empty section, to keep typing after
+    // Enter, or when the space below the section's to dos is clicked
+    function addRow() {
       const temp = { done: false, indent: 0, text: "" };
-      tasks.appendChild(createTaskEl(
+      const row = createTaskEl(
         temp, () => {}, () => {},
         {
           onCommit: byEnter => commitNew(
@@ -2682,7 +2711,17 @@
           ),
           section: sec.id
         }
-      ));
+      );
+      tasks.appendChild(row);
+      return row;
+    }
+    if (opts.addable) {
+      if (!items.length || datesRefocus === sec.id) addRow();
+      tasks.addEventListener("click", e => {
+        if (e.target.closest(".task")) return;
+        const row = tasks.querySelector(".task.placeholder") || addRow();
+        row.querySelector("textarea").focus();
+      });
     }
 
     const body = document.createElement("div");
@@ -3167,10 +3206,8 @@
       header.className = "day-header";
       header.innerHTML =
         '<div class="day-name">'
-        + DAY_NAMES[i] + (isToday(date)
-          ? '<span class="today-tag">today</span>' : "") + '</div>'
-        + '<div class="day-date">'
-        + date.getDate() + '</div>';
+        + DAY_NAMES[i] + " " + date.getDate() + (isToday(date)
+          ? '<span class="today-tag">today</span>' : "") + '</div>';
 
       const tasks = document.createElement("div");
       tasks.className = "day-tasks drop-zone";
@@ -3209,9 +3246,7 @@
 
     const laterH = document.createElement("div");
     laterH.className = "day-header";
-    // A blank date line keeps this heading as tall as the others
-    laterH.innerHTML = '<div class="day-name">to schedule</div>'
-      + '<div class="day-date">&nbsp;</div>';
+    laterH.innerHTML = '<div class="day-name">to schedule</div>';
 
     const laterT = document.createElement("div");
     laterT.className = "day-tasks drop-zone";
@@ -3374,7 +3409,7 @@
 
       const header = document.createElement("div");
       header.className = "day-header";
-      header.innerHTML = '<div class="day-date" style="font-size:16px;">'
+      header.innerHTML = '<div class="day-date" style="font-size:14px;">'
         + (date.getDate() === 1
           ? "1 " + MONTH_NAMES[date.getMonth()].slice(0, 3).toLowerCase()
           : date.getDate())

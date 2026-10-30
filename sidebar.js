@@ -57,8 +57,7 @@
     },
     {
       id: "simple", label: "simple",
-      icon: svg('<path d="M9 6h11M9 12h11M9 18h11"/>'
-        + dot(4.5, 6) + dot(4.5, 12) + dot(4.5, 18))
+      icon: svg('<path d="M4.5 6h15M4.5 12h15M4.5 18h15"/>')
     },
     {
       id: "dates", label: "dates",
@@ -293,7 +292,7 @@
       #tk-sidebar .tk-sub.open { grid-template-rows: 1fr; }
       #tk-sidebar .tk-sub-inner {
         align-items: center;
-        background: rgba(255, 255, 255, 0.045);
+        background: #041d2e;
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -316,25 +315,6 @@
         transform: rotate(180deg);
       }
       #tk-sidebar .tk-btn.has-active { color: #7fdbca; }
-
-      /* Today's to dos, counted on the to dos button */
-      #tk-sidebar .tk-badge {
-        background: #7fdbca;
-        border-radius: 8px;
-        color: #01111f;
-        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 10px;
-        font-weight: 700;
-        height: 15px;
-        line-height: 15px;
-        min-width: 15px;
-        padding: 0 4px;
-        position: absolute;
-        right: 1px;
-        text-align: center;
-        top: 2px;
-      }
-      #tk-sidebar .tk-badge[hidden] { display: none; }
 
       /* Sync icon: dim when signed out, teal when signed in, red on error */
       /* The sidebar icon is the only sync control */
@@ -732,78 +712,6 @@
     btn.setAttribute("aria-label", label);
   }
 
-  // ---- Today's count on the to dos button ----
-
-  let badgeSeen = null;
-
-  function todayCount() {
-    const D = window.ToolkitDates;
-    if (!D) return null;
-    const today = +D.dayStart(new Date());
-    const isToday = r => r && +r.start === today && +r.end === today;
-    let n = 0;
-    try {
-      const data = JSON.parse(read("todo-data")) || {};
-      const lists = [["simple", data.simple || []]];
-      Object.keys(data.toggleData || {}).forEach(id =>
-        lists.push(["toggle-" + id, data.toggleData[id]]));
-      Object.keys(data.weekly || {}).forEach(k =>
-        lists.push([k, data.weekly[k]]));
-      lists.forEach(([src, list]) => (list || []).forEach(t => {
-        if (t.text && !t.done && isToday(D.taskRange(t, src))) n++;
-      }));
-    } catch {}
-    try {
-      const notes = JSON.parse(read("notes-data"));
-      (notes && notes.notes || []).forEach(note => {
-        if (note.trashed) return;
-        (note.blocks || []).forEach(b => {
-          if (b.type !== "todo" || b.checked) return;
-          const t = document.createElement("template");
-          t.innerHTML = String(b.html || "").replace(/<br>/g, " ");
-          const text = t.content.textContent.trim();
-          const anchor = D.dayStart(
-            new Date(b.anchorAt || note.updated || Date.now()));
-          if (text && isToday(D.textRange(text, anchor))) n++;
-        });
-      });
-    } catch {}
-    return n;
-  }
-
-  // Redrawn when the to dos, notes or day change
-  function updateBadge() {
-    const btn = nav && nav.querySelector('.tk-btn[data-id="todos"]');
-    if (!btn) return;
-    const seen = (read("todo-data") || "") + "|" + (read("notes-data") || "")
-      + "|" + new Date().toDateString();
-    if (seen === badgeSeen) return;
-    const n = todayCount();
-    if (n === null) return;
-    badgeSeen = seen;
-    let badge = btn.querySelector(".tk-badge");
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "tk-badge";
-      btn.appendChild(badge);
-    }
-    badge.textContent = n > 99 ? "99+" : n;
-    badge.hidden = !n;
-    btn.title = n ? n + " to do" + (n === 1 ? "" : "s") + " today" : "";
-  }
-
-  // The count needs the shared date reading; load it if the page hasn't
-  function startBadge() {
-    if (!window.ToolkitDates && !document.querySelector('script[src$="dates.js"]')) {
-      const s = document.createElement("script");
-      s.src = (cfg.root || "../") + "dates.js";
-      s.onload = updateBadge;
-      document.head.appendChild(s);
-    }
-    updateBadge();
-    setInterval(updateBadge, 2000);
-  }
-
   // The list of views starts closed on every page
   function todosOpen() {
     const sub = nav && nav.querySelector(".tk-sub");
@@ -1150,7 +1058,6 @@
       window.addEventListener("pagehide", () => store(FROM_KEY, location.href));
     }
     startFocus();
-    if (!cfg.bare) startBadge();
 
     // Catch up if sync.js started before the sidebar
     if (syncState) setSync(syncState.state, syncState.label);

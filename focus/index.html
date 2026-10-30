@@ -182,6 +182,18 @@
     border-color: var(--border);
   }
   .pick-row .pr-text { flex: 1; min-width: 0; }
+
+  /* The focus symbol beside each task: click to focus on it */
+  .pick-row .pr-focus {
+    align-self: center;
+    color: var(--accent);
+    display: flex;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .pick-row .pr-focus svg { height: 17px; width: 17px; }
+  .pick-row:hover .pr-focus, .pick-row.active .pr-focus { opacity: 1; }
   .pick-row .pr-src {
     color: var(--fg-muted);
     flex-shrink: 0;
@@ -222,7 +234,7 @@
     margin-right: 4px;
   }
   /* Minute buttons: the notes folder cards' colour, with teal text */
-  .min-btn, #cheer-back {
+  .min-btn {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -231,7 +243,7 @@
     text-transform: lowercase;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
-  .min-btn:hover, #cheer-back:hover { border-color: var(--accent); }
+  .min-btn:hover { border-color: var(--accent); }
   .min-btn {
     color: var(--accent);
     font-size: 15px;
@@ -241,8 +253,6 @@
   }
   .min-btn.active { background: var(--tint); border-color: var(--accent); }
 
-  /* The cheer's button keeps the dashboard tool style */
-  #cheer-back { box-shadow: var(--shadow); color: var(--fg); }
 
   /* Every button gives a little when pressed */
   @keyframes press {
@@ -391,17 +401,24 @@
   }
   #ring.expired .ring-body { animation: alarm 0.5s ease-in-out 3; }
   .ring-body { height: 100%; width: 100%; }
+  /* The time (or cheer) sits at the centre; the rest hangs beneath */
   .ring-face {
     align-items: center;
     display: flex;
     flex-direction: column;
     inset: 0;
-    justify-content: center;
     position: absolute;
+  }
+  .face-top, .face-below {
+    align-items: center;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
   }
   #c-time {
     color: var(--accent);
-    font-size: 64px;
+    font-size: 76px;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
     line-height: 1.1;
@@ -415,11 +432,10 @@
   #c-btns {
     display: flex;
     gap: 12px;
-    margin-top: 6px;
+    margin-top: 4px;
   }
 
   /* A finished task needs no timer */
-  #focus.is-done .timer, #focus.is-done #minutes { visibility: hidden; }
 
   /* Start, pause and reset: round icon buttons inside the ring */
   .ctl {
@@ -441,17 +457,34 @@
   .ctl svg { height: 18px; width: 18px; }
   .ctl.press { animation: press 0.3s ease; }
 
-  /* ---- Subtasks ---- */
-  /* The first subtask, or the field, sits 10px below the task */
-  #subs { margin: 0 0 0 32px; }
+  /* ---- Steps ----
+     Steps belong to focus mode only. Each row has a teal + (a tick once
+     done); the field for the next step sits in the same column, so a
+     new step takes its place and a fresh + opens beneath */
+  #subs { margin: 8px 0 0 32px; }
+  #subs:empty { margin-top: 0; }
   #subs:empty + .add-sub { margin-top: 8px; }
-  .sub {
+  .sub, .add-sub {
     align-items: center;
     display: flex;
     gap: 10px;
-    padding: 4px 0 4px calc(var(--d, 0) * 24px);
+    min-height: 32px;
+    padding: 2px 0;
   }
-  .sub-text {
+  .sub-mark, .add-sub .plus {
+    background: none;
+    border: none;
+    color: var(--accent);
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 17px;
+    line-height: 1;
+    padding: 0;
+    text-align: center;
+    width: 16px;
+  }
+  .sub-mark { cursor: pointer; }
+  .sub-text, #add-sub {
     background: none;
     border: none;
     color: var(--fg);
@@ -474,77 +507,74 @@
   }
   .sub:hover .sub-del, .sub:focus-within .sub-del { opacity: 0.6; }
   .sub-del:hover { opacity: 1 !important; }
-  .add-sub {
-    align-items: center;
-    display: flex;
-    gap: 10px;
-    padding: 4px 0;
-  }
-  .add-sub .plus {
-    color: var(--fg-muted);
-    font-size: 17px;
-    text-align: center;
-    width: 16px;
-  }
-  #add-sub {
-    background: none;
-    border: none;
-    color: var(--fg);
-    flex: 1;
-    font-size: 17px;
-    outline: none;
-    padding: 2px 0;
-  }
   #add-sub::placeholder {
     color: var(--fg-muted);
     font-style: italic;
     opacity: 0.55;
   }
-  .add-sub .plus { opacity: 0.55; }
   .add-sub[hidden] { display: none; }
 
-
-  /* ---- Cheer ---- */
-  #cheer {
-    align-items: center;
-    background: var(--bg-surface);
-    border: 1px solid var(--accent);
-    border-radius: 10px;
-    bottom: 32px;
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    left: 50%;
-    opacity: 0;
-    padding: 18px 28px;
-    pointer-events: none;
-    position: fixed;
-    transform: translate(-50%, 30px);
-    transition: opacity 0.3s, transform 0.45s cubic-bezier(.2, 1.4, .4, 1);
+  /* ---- Finished: the ring fills and the cheer sits inside ---- */
+  /* A wide stroke on a half-radius circle draws a disc that sweeps in
+     from 12 o'clock towards 9, following the timer's moving edge, then
+     breathes. The mirror reverses the stroke's direction; the long gap
+     keeps it hidden until it starts, and the dash runs a little past
+     the start so no seam shows once it's full */
+  #ring-fill {
+    stroke: var(--accent);
+    stroke-dasharray: 101 200;
+    stroke-dashoffset: 101;
+    stroke-width: 95 !important;
+    transform: scaleY(-1);
+    transform-origin: 100px 100px;
   }
-  #cheer.show {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate(-50%, 0);
+  #ring.finished #ring-fill {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 2.5s ease-in-out;
   }
-  #cheer-text {
-    color: var(--accent);
-    font-size: 24px;
+  #ring.finished .ring-body {
+    animation: breathe 3.2s ease-in-out 2.5s infinite;
+  }
+  #c-cheer, #c-back { display: none; }
+  #ring.finished #c-time, #ring.finished #c-state,
+  #ring.finished #c-btns { display: none; }
+  #ring.finished #c-cheer { display: block; }
+  #ring.finished .face-main, #ring.finished .face-below {
+    animation: rise 0.5s ease 2.1s both;
+  }
+  #c-cheer {
+    color: var(--bg);
+    font-size: 32px;
     font-weight: 700;
+    line-height: 1.15;
+    max-width: 220px;
+    overflow-wrap: anywhere;
     text-align: center;
   }
-  #cheer-back {
+  #c-back {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--bg);
+    cursor: pointer;
     font-size: 14px;
-    padding: 8px 16px;
-    text-decoration: none;
+    gap: 6px;
+    margin-top: 10px;
+    opacity: 0.6;
+    padding: 4px 8px;
+    text-transform: lowercase;
+    transition: opacity 0.15s;
   }
+  #ring.finished #c-back { display: flex; }
+  #c-back:hover, #c-back:focus-visible { opacity: 1; outline: none; }
+  #focus.is-done #minutes { visibility: hidden; }
 
   @media (max-width: 600px) {
     main { padding-top: 70px; }
     .focal { flex-wrap: wrap; }
     #ring { height: 240px; width: 240px; }
-    #c-time { font-size: 54px; }
+    #c-time { font-size: 64px; }
+    #c-cheer { font-size: 28px; max-width: 190px; }
   }
 </style>
 </head>
@@ -582,14 +612,28 @@
         <div id="ring">
           <div class="ring-body">
             <svg viewBox="0 0 200 200" aria-hidden="true">
+              <circle id="ring-fill" cx="100" cy="100" r="47.5" pathLength="100"/>
               <circle class="ring-track" cx="100" cy="100" r="92"/>
               <circle id="ring-arc" cx="100" cy="100" r="92"/>
             </svg>
           </div>
           <div class="ring-face">
-            <div id="c-time"></div>
-            <div id="c-state"></div>
-            <div id="c-btns"></div>
+            <div class="face-top"></div>
+            <div class="face-main">
+              <div id="c-time"></div>
+              <div id="c-cheer" role="status"></div>
+            </div>
+            <div class="face-below">
+              <div id="c-state"></div>
+              <div id="c-btns"></div>
+              <button id="c-back" type="button">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/>
+                  <path d="M4.5 4v4.5H9"/></svg>
+              <span>back to timer</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -608,10 +652,6 @@
     </section>
   </main>
 
-  <div id="cheer" role="status">
-    <div id="cheer-text"></div>
-    <a id="cheer-back" href="#"></a>
-  </div>
 </div>
 
 <script src="../sync.js"></script>
@@ -740,25 +780,6 @@
     }
   }
 
-  // Subtasks: the to dos indented under the focal one
-  function children(loc) {
-    const out = [];
-    let end = loc.i + 1;
-    for (let j = loc.i + 1; j < loc.arr.length; j++) {
-      const x = loc.arr[j];
-      if ((x.indent || 0) <= loc.indent) break;
-      if (loc.kind === "todo" && !x.text) continue;
-      end = j + 1;
-      if (loc.kind === "note" && x.type !== "todo") continue;
-      out.push({ depth: (x.indent || 0) - loc.indent - 1, item: x });
-    }
-    return { end, items: out };
-  }
-
-  const subText = (loc, x) => loc.kind === "todo" ? x.text
-    : htmlText(x.html);
-  const isDone = (loc, x) => loc.kind === "todo" ? !!x.done : !!x.checked;
-
   function setDone(loc, x, done) {
     if (loc.kind === "todo") x.done = done;
     else x.checked = done;
@@ -818,8 +839,9 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pick-row";
-      btn.innerHTML = '<span class="pr-text">' + D.highlight(c.text)
-        + "</span>";
+      btn.innerHTML = '<span class="pr-focus" aria-hidden="true">'
+        + ToolkitSidebar.icon("focus") + '</span><span class="pr-text">'
+        + D.highlight(c.text) + "</span>";
       if (c.kind === "note") {
         const src = document.createElement("span");
         src.className = "pr-src";
@@ -958,44 +980,77 @@
     if (document.activeElement !== $("focal-text")) showFocal(loc);
     $("focal-done").checked = loc.done;
     document.querySelector(".focal").classList.toggle("done", loc.done);
-    $("focus").classList.toggle("is-done", loc.done);
+
+    // Ticked here: the ring fills and holds a cheer, until 'back to timer'
+    const finished = loc.done && finishedFor === stepKey(s.task);
+    $("focus").classList.toggle("is-done", finished);
+    $("ring").classList.toggle("finished", finished);
+    ringFinished = finished;
     ToolkitSidebar.title(loc.text.slice(0, 40), "focus");
-    renderSubs(loc);
+    renderSubs();
     renderClock(s, true);
   }
 
-  function renderSubs(loc) {
+  // ---- Steps ----
+  //
+  // Breaking a task down happens here only: steps are kept with the
+  // task on this device, not added to the to dos or the note
+
+  const STEPS_KEY = "focus-steps";
+
+  // Which task's finished ring is showing (cleared by 'back to timer')
+  let finishedFor = null, ringFinished = false;
+
+  function stepKey(ref) {
+    return ref.kind === "todo" ? "todo:" + ref.fid
+      : "note:" + ref.noteId + ":" + ref.blockId;
+  }
+
+  function allSteps() {
+    try { return JSON.parse(read(STEPS_KEY)) || {}; } catch { return {}; }
+  }
+
+  function getSteps() {
+    const ref = F.get().task;
+    return ref ? allSteps()[stepKey(ref)] || [] : [];
+  }
+
+  function setSteps(list) {
+    const ref = F.get().task;
+    if (!ref) return;
+    const all = allSteps();
+    if (list.length) all[stepKey(ref)] = list;
+    else delete all[stepKey(ref)];
+    store(STEPS_KEY, JSON.stringify(all));
+  }
+
+  function renderSubs() {
     const box = $("subs");
     box.innerHTML = "";
-    children(loc).items.forEach(({ depth, item }) => {
+    getSteps().forEach((step, k) => {
       const row = document.createElement("div");
-      row.className = "sub" + (isDone(loc, item) ? " done" : "");
-      row.style.setProperty("--d", depth);
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = isDone(loc, item);
-      cb.addEventListener("change", () => {
-        const cur = locate(F.get().task);
-        const x = cur && cur.arr[loc.arr.indexOf(item)];
-        if (!x) return;
-        setDone(cur, x, cb.checked);
-        save(cur);
-        row.classList.toggle("done", cb.checked);
+      row.className = "sub" + (step.done ? " done" : "");
+      const mark = document.createElement("button");
+      mark.className = "sub-mark";
+      mark.type = "button";
+      mark.textContent = step.done ? "✓" : "+";
+      mark.title = step.done ? "not done" : "done";
+      mark.setAttribute("aria-label", mark.title);
+      mark.addEventListener("click", () => {
+        const list = getSteps();
+        if (!list[k]) return;
+        list[k].done = !list[k].done;
+        setSteps(list);
+        renderSubs();
       });
       const input = document.createElement("input");
       input.className = "sub-text";
-      input.value = subText(loc, item);
+      input.value = step.text;
       input.addEventListener("input", () => {
-        const cur = locate(F.get().task);
-        const x = cur && cur.arr[loc.arr.indexOf(item)];
-        if (!x) return;
-        if (cur.kind === "todo") {
-          x.text = input.value;
-          if (x.text) D.stampAnchor(x);
-        } else {
-          x.html = esc(input.value);
-        }
-        save(cur);
+        const list = getSteps();
+        if (!list[k]) return;
+        list[k].text = input.value;
+        setSteps(list);
       });
       input.addEventListener("keydown", e => {
         if (e.key === "Enter") {
@@ -1003,56 +1058,40 @@
           $("add-sub").focus();
         } else if (e.key === "Backspace" && input.value === "") {
           e.preventDefault();
-          remove(loc, item);
+          removeStep(k);
         }
       });
       const del = document.createElement("button");
       del.className = "sub-del";
       del.type = "button";
       del.textContent = "×";
-      del.title = "delete subtask";
-      del.addEventListener("click", () => remove(loc, item));
-      row.append(cb, input, del);
+      del.title = "delete step";
+      del.addEventListener("click", () => removeStep(k));
+      row.append(mark, input, del);
       box.appendChild(row);
     });
-
-    // To dos nest at most three levels deep
-    $("add-sub-row").hidden = loc.kind === "todo" && loc.indent >= 3;
     $("add-sub").placeholder = box.children.length ? "" : "break it down?";
   }
 
-  function remove(loc, item) {
-    const cur = locate(F.get().task);
-    const idx = loc.arr.indexOf(item);
-    if (!cur || idx < 0) return;
-    cur.arr.splice(idx, 1);
-    save(cur);
-    render();
+  function removeStep(k) {
+    const list = getSteps();
+    list.splice(k, 1);
+    setSteps(list);
+    renderSubs();
     $("add-sub").focus();
   }
 
-  // Add a subtask after the last one
+  // A new step takes the field's place; a fresh + opens beneath
   $("add-sub").addEventListener("keydown", e => {
     if (e.key !== "Enter") return;
     e.preventDefault();
     const text = $("add-sub").value.trim();
     if (!text) return;
-    const loc = locate(F.get().task);
-    if (!loc) return;
-    const at = children(loc).end;
-    const indent = loc.indent + 1;
-    let x;
-    if (loc.kind === "todo") {
-      x = { done: false, indent, text };
-      D.stampAnchor(x);
-    } else {
-      x = { checked: false, color: null, html: esc(text), id: uid(),
-        indent, open: true, type: "todo" };
-    }
-    loc.arr.splice(at, 0, x);
-    save(loc);
+    const list = getSteps();
+    list.push({ done: false, text });
+    setSteps(list);
     $("add-sub").value = "";
-    render();
+    renderSubs();
     $("add-sub").focus();
   });
 
@@ -1071,9 +1110,19 @@
       s.bannerOff = true;
       F.set(s);
     }
+    if (done) {
+      finishedFor = stepKey(F.get().task);
+      $("c-cheer").textContent = nextCheer();
+    } else {
+      finishedFor = null;
+    }
     render();
-    if (done) cheer();
-    else $("cheer").classList.remove("show");
+  });
+
+  // Back to the timer for another round; the task stays ticked
+  $("c-back").addEventListener("click", () => {
+    finishedFor = null;
+    render();
   });
 
   // ---- Editing the focal task ----
@@ -1362,7 +1411,7 @@
     const frac = Math.min(1, left / total);
     $("ring-arc").style.strokeDasharray = RING;
     $("ring-arc").style.strokeDashoffset = RING * (1 - frac);
-    $("ring").className = s.state;
+    $("ring").className = s.state + (ringFinished ? " finished" : "");
     $("switch").hidden = s.state === "running" || s.state === "paused";
   }
 
@@ -1434,7 +1483,7 @@
 
   $("switch").addEventListener("click", () => {
     F.set({ state: "idle" });
-    $("cheer").classList.remove("show");
+    finishedFor = null;
     render();
   });
 
@@ -1446,27 +1495,25 @@
     return "../to-dos/index.html#dates";
   }
 
-  function backLabel(href) {
-    if (/\/to-dos\//.test(href)) return "back to to dos";
-    if (/\/notes\//.test(href)) return "back to notes";
-    if (/\/codepad\//.test(href)) return "back to codepad";
-    return "back to the dashboard";
-  }
-
-  let lastCheer = -1;
-  function cheer() {
-    let i;
-    do { i = Math.floor(Math.random() * CHEERS.length); }
-    while (i === lastCheer && CHEERS.length > 1);
-    lastCheer = i;
-    $("cheer-text").textContent = CHEERS[i];
-    const href = backTarget();
-    $("cheer-back").href = href;
-    $("cheer-back").textContent = backLabel(href);
-    const c = $("cheer");
-    c.classList.remove("show");
-    void c.offsetWidth;
-    c.classList.add("show");
+  // Cheers come from a shuffled bag, so none repeats until all are used
+  const CHEER_KEY = "focus-cheer-bag";
+  function nextCheer() {
+    let bag = [];
+    try { bag = JSON.parse(read(CHEER_KEY)) || []; } catch {}
+    bag = bag.filter(k => k >= 0 && k < CHEERS.length);
+    if (!bag.length) {
+      const last = +(read("focus-cheer-last") ?? -1);
+      bag = CHEERS.map((_, k) => k);
+      for (let k = bag.length - 1; k > 0; k--) {
+        const r = Math.floor(Math.random() * (k + 1));
+        [bag[k], bag[r]] = [bag[r], bag[k]];
+      }
+      if (bag[0] === last && bag.length > 1) bag.push(bag.shift());
+    }
+    const k = bag.shift();
+    store(CHEER_KEY, JSON.stringify(bag));
+    store("focus-cheer-last", String(k));
+    return CHEERS[k];
   }
 
   function leave() {
@@ -1535,7 +1582,7 @@
 
   // Every button gives a little when pressed
   document.addEventListener("pointerdown", e => {
-    const b = e.target.closest("button, #cheer-back");
+    const b = e.target.closest("button");
     if (!b || b.disabled) return;
     b.classList.remove("press");
     void b.offsetWidth;

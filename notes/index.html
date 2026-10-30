@@ -118,9 +118,15 @@
   .width-full #gallery { max-width: 100%; }
 
   /* Preview panel sizes */
-  .cards-s { --card-h: 130px; --card-min: 170px; }
-  .cards-m { --card-h: 165px; --card-min: 215px; }
-  .cards-l { --card-h: 200px; --card-min: 260px; }
+  .cards-s { --card-h: 130px; --card-min: 145px; }
+  .cards-m { --card-h: 165px; --card-min: 185px; }
+  .cards-l { --card-h: 200px; --card-min: 220px; }
+
+  /* Previews off: each note is just its title cell */
+  .no-previews .note-card { height: auto; }
+  .no-previews .note-card .card-preview { display: none; }
+  .no-previews .note-card .card-title { border-bottom: none; }
+  .no-previews .new-card:not(.folder-card) { height: auto; min-height: 54px; }
 
   #search {
     background: transparent;
@@ -179,7 +185,15 @@
   }
   .card-name.untitled { color: var(--fg-muted); font-weight: 400; }
   .card-name svg { margin-right: 5px; vertical-align: -1px; }
-  .card-date { color: var(--accent); font-size: 12px; margin-top: 1px; }
+  /* Date and tags share a line, as in the note */
+  .card-meta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 6px;
+    margin-top: 1px;
+  }
+  .card-date { color: var(--accent); font-size: 12px; }
   .card-preview {
     color: var(--fg-muted);
     flex: 1;
@@ -198,7 +212,6 @@
   .pv-line.pv-head { color: var(--fg); font-weight: 600; }
   .pv-line.pv-done { text-decoration: line-through; }
   .pv-line.pv-code { font-family: 'Ubuntu Mono', 'Consolas', monospace; }
-  .pv-line.pv-toggle { color: var(--accent); }
   .pv-line hr {
     border: none;
     border-top: 1px solid var(--border);
@@ -348,6 +361,7 @@
   /* Icons a folder can wear */
   .folder-icon { color: var(--accent); display: flex; flex-shrink: 0; }
   .folder-icon svg { height: 22px; width: 22px; }
+  .folder-card .folder-icon svg { height: 28px; width: 28px; }
   .icon-grid {
     display: grid;
     gap: 3px;
@@ -427,6 +441,13 @@
     border-bottom: 1px solid var(--border);
     border-radius: 6px 6px 0 0;
     padding: 24px 56px 28px 72px;
+    position: relative;
+  }
+
+  /* The note's own ⋯ menu, at the top right as on its card */
+  .note-head > .more-btn { right: 10px; top: 10px; }
+  .note-head:hover > .more-btn, .note-head > .more-btn:focus-visible {
+    opacity: 0.8;
   }
   .sheet.back-above { margin-top: 34px; }
 
@@ -453,7 +474,7 @@
   .crumbs .sep { opacity: 0.5; }
 
   /* Last edited, pin and word count: dim details */
-  .edited { color: var(--fg-muted); font-size: 13px; opacity: 0.7; }
+
   .pin-toggle {
     align-items: center;
     background: none;
@@ -471,23 +492,24 @@
   }
   .pin-toggle:hover { background: var(--hover); opacity: 1; }
   .pin-toggle.on { color: var(--accent); opacity: 0.9; }
-  .word-count {
+  /* Edited time at the bottom left, word count at the bottom right */
+  .edited, .word-count {
     bottom: 12px;
     color: var(--fg-muted);
     font-size: 12px;
     opacity: 0.6;
     position: absolute;
-    right: 18px;
   }
+  .edited { left: 18px; }
+  .word-count { right: 18px; }
 
-  /* Trash: a floating button at the bottom right */
+  /* Bin: a plain floating button at the bottom right */
   #trash-fab {
     align-items: center;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
+    background: none;
+    border: none;
     border-radius: 6px;
     bottom: 16px;
-    box-shadow: var(--shadow);
     color: var(--fg-muted);
     cursor: pointer;
     display: flex;
@@ -495,13 +517,16 @@
     justify-content: center;
     position: fixed;
     right: 16px;
-    transition: border-color 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s;
     width: 44px;
-    z-index: 950;
+    z-index: 970;
   }
-  #trash-fab:hover, #trash-fab.open { border-color: var(--accent);
-    color: var(--accent); }
-  #trash-fab.drop-into { background: var(--drag-bg); }
+  #trash-fab:hover, #trash-fab:focus-visible, #trash-fab.open {
+    background: var(--hover);
+    color: var(--fg);
+    outline: none;
+  }
+  #trash-fab.drop-into { background: var(--drag-bg); color: var(--accent); }
   #trash-fab .badge {
     background: var(--accent);
     border-radius: 8px;
@@ -512,25 +537,51 @@
     min-width: 16px;
     padding: 0 4px;
     position: absolute;
-    right: -5px;
+    right: -2px;
     text-align: center;
-    top: -5px;
+    top: -2px;
+  }
+
+  /* The bin opens as a drawer down the right edge: titles, dates and
+     tags only, newest first */
+  @keyframes drawer-in {
+    from { transform: translateX(100%); }
+    to { transform: none; }
   }
   #trash-pop {
     background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    bottom: 70px;
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
-    max-height: 60vh;
-    overflow-y: auto;
-    padding: 10px 12px 12px;
+    border-left: 1px solid var(--border);
+    bottom: 0;
+    box-shadow: -8px 0 26px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 12px 76px;
     position: fixed;
-    right: 16px;
-    width: min(720px, calc(100vw - 110px));
+    right: 0;
+    top: 0;
+    width: min(300px, 85vw);
     z-index: 960;
   }
-  #trash-pop .panel-head { cursor: default; }
+  #trash-pop.slide { animation: drawer-in 0.25s ease; }
+  #trash-pop .bin-head {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  #trash-pop .panel-head { cursor: default; margin: 0; }
+  #trash-pop .bin-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  #trash-pop .card { flex-shrink: 0; height: auto; min-height: 0; }
+  #trash-pop .card-preview { display: none; }
+  #trash-pop .card-title { border-bottom: none; }
   .sort-bar {
     color: var(--fg-muted);
     display: flex;
@@ -551,6 +602,7 @@
     padding: 1px 5px;
   }
   .sort-bar button:hover { opacity: 1; }
+  .sort-bar .sort-gap { margin-left: 10px; }
   .sort-bar button.on { color: var(--accent); opacity: 1; }
   #title {
     color: var(--fg);
@@ -634,7 +686,7 @@
     padding: 0 4px;
   }
   .tag-input::placeholder { color: var(--accent); opacity: 0.45; }
-  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
   .card-tags .tag-chip { cursor: pointer; font-size: 11px; padding: 0 4px; }
   .card-tags .tag-chip:hover {
     background: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -1255,7 +1307,6 @@
         <div id="title" contenteditable="true" spellcheck="true"></div>
         <div class="meta-row">
           <span id="date" title="click to change the date"></span>
-          <span class="edited"></span>
           <span id="tags"></span>
           <button class="add-tag" type="button">+ tag</button>
           <button class="pin-toggle" type="button"></button>
@@ -1263,13 +1314,14 @@
       </div>
       <div class="note-body">
         <div id="blocks"><div id="drop-line"></div></div>
+        <div class="edited"></div>
         <div class="word-count"></div>
       </div>
     </div>
   </div>
 
-  <button id="trash-fab" class="gone" type="button" aria-label="trash"
-    title="trash: drop notes here, click to open"></button>
+  <button id="trash-fab" class="gone" type="button" aria-label="bin"
+    title="bin: drop notes here, click to open"></button>
 
   <!-- Shown when text is selected -->
   <div id="fmt">
@@ -1299,6 +1351,7 @@
   const SCROLL_KEY = "notes-scroll";
   const SIZE_KEY  = "notes-size";
   const SORT_KEY  = "notes-sort";
+  const PREVIEW_KEY = "notes-previews";
   const WIDTH_KEY = "notes-width";
   const TRASH_DAYS = 30;
 
@@ -1381,7 +1434,7 @@
     + 'viewBox="0 0 24 24" '
     + 'fill="none" stroke="currentColor" stroke-width="1.8" '
     + 'stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16'
-    + 'M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg>';
+    + 'M6.5 7v10.5A2.5 2.5 0 0 0 9 20h6a2.5 2.5 0 0 0 2.5-2.5V7"/></svg>';
   const PIN_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" '
     + 'fill="none" stroke="currentColor" stroke-width="2.2" '
     + 'stroke-linecap="round" stroke-linejoin="round"><path d="M15 3l6 6'
@@ -1866,7 +1919,7 @@
   const live = () => notes.filter(n => !n.trashed);
   const byEdited = (a, b) => (b.updated || 0) - (a.updated || 0);
 
-  let sortBy = "edited";
+  let sortBy = "edited", previews = true;
 
   // Last edited, the note's own date, or title
   function bySort(a, b) {
@@ -2058,7 +2111,10 @@
     const date = document.createElement("div");
     date.className = "card-date";
     date.textContent = "@" + fmtLong(fromIso(n.date));
-    head.append(name, date);
+    const meta = document.createElement("div");
+    meta.className = "card-meta";
+    meta.appendChild(date);
+    head.append(name, meta);
     if (n.tags.length) {
       const tags = document.createElement("div");
       tags.className = "card-tags";
@@ -2075,7 +2131,7 @@
         });
         tags.appendChild(chip);
       });
-      head.appendChild(tags);
+      meta.appendChild(tags);
     }
 
     const pv = document.createElement("div");
@@ -2149,17 +2205,18 @@
     const n = notes.filter(x => x.trashed).length;
     trashFab.innerHTML = TRASH_ICON + (n ? '<span class="badge">' + n
       + "</span>" : "");
-    trashFab.setAttribute("aria-label", "trash, " + n
+    trashFab.setAttribute("aria-label", "bin, " + n
       + (n === 1 ? " note" : " notes"));
   }
 
   let trashPop = null;
 
-  function openTrash() {
+  function openTrash(slide) {
     closeTrash();
     trashPop = trashPanel();
     trashPop.id = "trash-pop";
     trashPop.classList.remove("panel");
+    if (slide) trashPop.classList.add("slide");
     gallery.appendChild(trashPop);
     trashFab.classList.add("open");
   }
@@ -2172,7 +2229,7 @@
 
   trashFab.addEventListener("click", () => {
     if (trashPop) closeTrash();
-    else openTrash();
+    else openTrash(true);
   });
   document.addEventListener("pointerdown", e => {
     if (trashPop && !e.target.closest("#trash-pop, #trash-fab, .menu")) {
@@ -2291,41 +2348,42 @@
     const panel = document.createElement("div");
     panel.className = "panel";
     panel.dataset.for = "_trash";
+    const top = document.createElement("div");
+    top.className = "bin-head";
     const head = document.createElement("div");
     head.className = "panel-head";
-    head.textContent = "trash";
-    panel.appendChild(head);
+    head.textContent = "bin";
+    top.appendChild(head);
+    panel.appendChild(top);
     const list = notes.filter(n => n.trashed)
       .sort((a, b) => b.trashed - a.trashed);
     if (!list.length) {
       const msg = document.createElement("div");
       msg.className = "empty-msg";
-      msg.textContent = "trash is empty";
+      msg.textContent = "the bin is empty";
       panel.appendChild(msg);
       return panel;
     }
     const grid = document.createElement("div");
-    grid.className = "grid";
+    grid.className = "bin-list";
     list.forEach(n => grid.appendChild(noteCard(n)));
     panel.appendChild(grid);
-    const actions = document.createElement("div");
-    actions.className = "panel-actions";
+    const actions = top;
     const empty = document.createElement("button");
     empty.className = "text-btn";
     empty.type = "button";
-    empty.textContent = "empty trash";
+    empty.textContent = "empty the bin";
     empty.addEventListener("click", () => {
       if (!empty.classList.contains("armed")) {
         empty.classList.add("armed");
-        empty.textContent = "click again to empty trash";
+        empty.textContent = "click again to empty the bin";
         return;
       }
-      withUndo("trash emptied", () => {
+      withUndo("bin emptied", () => {
         notes = notes.filter(n => !n.trashed);
       });
     });
     actions.appendChild(empty);
-    panel.appendChild(actions);
     return panel;
   }
 
@@ -2379,6 +2437,25 @@
         });
         bar.appendChild(b);
       });
+
+    // Previews on, or just each note's title cell
+    const label = document.createElement("span");
+    label.className = "sort-gap";
+    label.textContent = "previews:";
+    bar.appendChild(label);
+    [[true, "on"], [false, "off"]].forEach(([value, text]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      b.dataset.previews = text;
+      b.classList.toggle("on", previews === value);
+      b.addEventListener("click", () => {
+        previews = value;
+        localStorage.setItem(PREVIEW_KEY, value ? "on" : "off");
+        renderGallery();
+      });
+      bar.appendChild(b);
+    });
     return bar;
   }
 
@@ -2387,6 +2464,7 @@
     if (trashPop) openTrash();
     gallery.classList.remove("cards-s", "cards-m", "cards-l");
     gallery.classList.add("cards-" + cardSize);
+    gallery.classList.toggle("no-previews", !previews);
     galBody.innerHTML = "";
     const q = query.trim().toLowerCase();
 
@@ -2589,15 +2667,22 @@
 
   // ---- Gallery menus ----
 
-  function cardMenu(anchor, n) {
+  // A note's menu, on its card and inside it: pin, duplicate, copy,
+  // download, bin, then colours
+  const BIN_SYM = '<svg width="13" height="13" viewBox="0 0 24 24" '
+    + 'fill="none" stroke="currentColor" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16'
+    + 'M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg>';
+
+  function cardMenu(anchor, n, inNote) {
     if (n.trashed) {
       showMenu(anchor, [
-        { label: "restore", run: () => {
+        { label: "restore", sym: "↺", run: () => {
           n.trashed = null;
           persist();
           renderGallery();
         } },
-        { confirm: "click again to delete", danger: true,
+        { confirm: "click again to delete", danger: true, sym: "−",
           label: "delete permanently", run: () => {
             withUndo("note deleted", () => {
               notes = notes.filter(x => x !== n);
@@ -2607,27 +2692,32 @@
       return;
     }
     showMenu(anchor, [
-      { label: n.pinned ? "unpin" : "pin", run: () => {
+      { label: n.pinned ? "unpin" : "pin", sym: PIN_ICON, run: () => {
         n.pinned = !n.pinned;
         persist();
-        renderGallery();
+        if (inNote) renderPin();
+        else renderGallery();
       } },
+      { label: "duplicate", sym: "+", run: () => {
+        duplicateNote(n);
+        if (inNote) ToolkitSidebar.toast("duplicated");
+        else renderGallery();
+      } },
+      { label: "copy as md", sym: "⧉", run: () => {
+        copyText(noteToMd(n));
+        ToolkitSidebar.toast("copied as markdown");
+      } },
+      { label: "download as md", sym: "↓", run: () => downloadMd(n) },
+      { label: "move to bin", sym: BIN_SYM, run: () => {
+        if (inNote) location.hash = "";
+        withUndo("moved to bin", () => { n.trashed = Date.now(); });
+      } },
+      { rule: true },
       { heading: "colour" },
       { active: n.tint, swatches: true, pick: col => {
         n.tint = col;
         persist();
-        renderGallery();
-      } },
-      { rule: true },
-      { label: "duplicate", run: () => {
-        duplicateNote(n);
-        renderGallery();
-      } },
-      { label: "copy as markdown", run: () => copyText(noteToMd(n)) },
-      { label: "download as .md", run: () => downloadMd(n) },
-      { rule: true },
-      { danger: true, label: "move to trash", run: () => {
-        withUndo("moved to trash", () => { n.trashed = Date.now(); });
+        if (!inNote) renderGallery();
       } }
     ]);
   }
@@ -2783,7 +2873,7 @@
       if (!n) return;
       if (act.trash) {
         gDrag = null;
-        withUndo("moved to trash", () => { n.trashed = Date.now(); });
+        withUndo("moved to bin", () => { n.trashed = Date.now(); });
         return;
       } else if (act.pin) {
         n.pinned = true;
@@ -4453,6 +4543,26 @@
         { once: true });
     };
     if (b.open) {
+      // An empty toggle opens onto an empty line, ready to type in
+      const kids = blocks().slice(i + 1, subtreeEnd(i));
+      if (!kids.some(x => ["divider", "table"].includes(x.type)
+        || blockText(x).trim())) {
+        let line = kids.find(x => x.type === "text" && !x.html);
+        if (!line) {
+          line = newBlock("text", "", b.indent + 1);
+          blocks().splice(i + 1, 0, line);
+          save();
+          renderBlocks();
+        } else {
+          applyHidden();
+        }
+        const el = blocksEl.querySelector('.block[data-id="' + line.id + '"]');
+        if (el) {
+          play(el, "reveal");
+          setCaret(el.querySelector(".content"), 0);
+        }
+        return;
+      }
       applyHidden();
       els.filter(x => !x.classList.contains("hidden"))
         .forEach(x => play(x, "reveal"));
@@ -5586,6 +5696,10 @@
     }
   });
 
+  // The note's own ⋯ menu, as on its card
+  noteEl.querySelector(".note-head")
+    .appendChild(moreButton(btn => cardMenu(btn, current, true)));
+
   crumbsEl.addEventListener("click", e => {
     const a = e.target.closest("a");
     if (!a) return;
@@ -5607,6 +5721,7 @@
     if (["s", "m", "l"].includes(k)) cardSize = k;
     const so = localStorage.getItem(SORT_KEY);
     if (["edited", "date", "title"].includes(so)) sortBy = so;
+    if (localStorage.getItem(PREVIEW_KEY) === "off") previews = false;
   } catch {}
 
   function applyClasses() {

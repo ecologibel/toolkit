@@ -151,25 +151,28 @@
     transition: padding 0.25s ease;
   }
   .views.open .views-inner { padding: 16px 2px 6px; }
-  .view-btn {
+  /* View and note buttons: like the tools, no outline; they fill
+     with the notes folders' colour on hover or Tab */
+  .view-btn, .note-card {
     align-items: center;
     aspect-ratio: 1;
-    background: var(--panel);
-    border: 1px solid var(--border);
+    background: none;
     border-radius: 6px;
-    box-shadow: var(--shadow);
     color: var(--fg);
     display: flex;
     flex-direction: column;
     font-size: 0.85em;
     justify-content: space-between;
-    padding: 10px 4px 6px;
+    min-width: 0;
+    outline: none;
+    padding: 10px 6px 6px;
     text-decoration: none;
     text-transform: lowercase;
-    transition: border-color 0.15s;
+    transition: background 0.15s;
   }
-  .view-btn:hover { border-color: var(--accent); }
-  .view-btn svg {
+  .view-btn:hover, .view-btn:focus-visible,
+  .note-card:hover, .note-card:focus-visible { background: var(--panel); }
+  .view-btn svg, .note-card svg {
     color: var(--accent);
     flex: 1;
     height: auto;
@@ -197,68 +200,45 @@
   .recent {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(6, 5.5em);
   }
-  .note-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    box-shadow: var(--shadow);
-    color: var(--fg);
-    display: flex;
-    flex-direction: column;
-    height: 140px;
-    overflow: hidden;
-    text-decoration: none;
-    transition: border-color 0.15s;
-  }
-  .note-card:hover { border-color: var(--accent); }
-  .note-card .nc-head {
-    background: var(--head-tint);
-    border-bottom: 1px solid var(--border);
-    padding: 6px 9px;
-  }
+
+  /* A recent note: its title, then its date */
   .nc-name {
-    font-size: 0.9em;
+    -webkit-box-orient: vertical;
+    display: -webkit-box;
     font-weight: 600;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    text-align: center;
+    text-transform: none;
   }
   .nc-name.untitled { color: var(--fg-muted); font-weight: 400; }
-  .nc-date { color: var(--accent); font-size: 0.72em; }
-  .nc-preview {
-    color: var(--fg-muted);
+  .nc-body {
+    align-items: center;
+    display: flex;
     flex: 1;
+    justify-content: center;
+    min-height: 0;
+    width: 100%;
+  }
+  .nc-date {
+    color: var(--accent);
     font-size: 0.78em;
-    line-height: 1.5;
-    -webkit-mask-image: linear-gradient(#000 60%, transparent);
-    mask-image: linear-gradient(#000 60%, transparent);
-    overflow: hidden;
-    padding: 6px 9px;
+    text-align: center;
+    white-space: nowrap;
   }
-  .nc-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .note-card.new {
+  .note-card .nc-plus {
     align-items: center;
-    background: none;
-    border: 1.5px dashed var(--border);
-    box-shadow: none;
-    color: var(--fg-muted);
-    font-size: 0.9em;
-    justify-content: center;
-    text-transform: lowercase;
+    color: var(--accent);
+    display: flex;
+    flex: 1;
+    font-size: 2.4em;
+    font-weight: 300;
+    line-height: 1;
   }
-  .note-card.new:hover { border-color: var(--accent); color: var(--accent); }
-  .note-card.all {
-    align-items: center;
-    color: var(--fg);
-    font-size: 0.9em;
-    font-weight: 600;
-    gap: 10px;
-    justify-content: center;
-    text-transform: lowercase;
-  }
-  .note-card.all svg { color: var(--accent); height: 40%; width: 40%; }
 
   /* ---- Right sidebar ---- */
   /* The today sidebar: resizable, and folds to a slim strip */
@@ -334,7 +314,7 @@
   .main-inner { animation: dash-in 0.35s ease both; }
   aside > div { animation: side-in 0.35s ease 0.08s both; }
   .today-head {
-    align-items: flex-end;
+    align-items: last baseline;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
@@ -498,7 +478,7 @@
     .aside-wrap::before, .aside-handle, .fold-btn { display: none; }
     aside, aside.folded { flex-basis: auto !important; padding: 36px 28px; }
     aside.folded > * { display: revert; }
-    .views-inner { grid-template-columns: repeat(3, 5.5em); }
+    .views-inner, .recent { grid-template-columns: repeat(3, 5.5em); }
   }
   @media (max-width: 600px) {
     main { padding: 32px 20px; }
@@ -530,7 +510,6 @@
       <h1 id="day"></h1>
       <div id="today-date"></div>
       <hr class="rule">
-      <div class="section-label">tools</div>
       <div class="tools">
         <button class="tool" type="button" data-tool="notes"
           aria-expanded="false"></button>
@@ -549,12 +528,12 @@
   <div class="aside-handle" title="drag to resize"></div>
   <aside>
     <button class="fold-btn unfold" type="button" title="show at a glance"
-      aria-label="show at a glance">&laquo;</button>
+      aria-label="show at a glance">&lt;</button>
     <div>
       <div class="today-head">
         <span class="today-title">at a glance</span>
         <button class="fold-btn" id="fold" type="button"
-          title="fold away" aria-label="fold away">&raquo;</button>
+          title="fold away" aria-label="fold away">&gt;</button>
       </div>
       <div id="glance"></div>
       <div class="add-row">
@@ -1036,37 +1015,29 @@
       const a = document.createElement("a");
       a.className = "note-card";
       a.href = "../notes/index.html#" + encodeURIComponent(n.id);
-      const head = document.createElement("div");
-      head.className = "nc-head";
+      // Just the title and date
+      const body = document.createElement("div");
+      body.className = "nc-body";
       const name = document.createElement("div");
       name.className = "nc-name";
       name.textContent = (n.title || "").trim() || "untitled";
       if (!(n.title || "").trim()) name.classList.add("untitled");
-      head.appendChild(name);
+      body.appendChild(name);
+      a.appendChild(body);
       if (/^\d{4}-\d{2}-\d{2}$/.test(n.date || "")) {
         const [y, m, d] = n.date.split("-").map(Number);
         const date = document.createElement("div");
         date.className = "nc-date";
         date.textContent = "@" + d + " "
           + MONTH_NAMES[m - 1].slice(0, 3).toLowerCase() + " " + y;
-        head.appendChild(date);
+        a.appendChild(date);
       }
-      const pv = document.createElement("div");
-      pv.className = "nc-preview";
-      (n.blocks || []).filter(b => b.type !== "divider" && b.html)
-        .slice(0, 5).forEach(b => {
-          const line = document.createElement("div");
-          line.className = "nc-line";
-          line.textContent = htmlText(b.html);
-          pv.appendChild(line);
-        });
-      a.append(head, pv);
       box.appendChild(a);
     });
     const add = document.createElement("a");
     add.className = "note-card new";
     add.href = "../notes/index.html#new";
-    add.textContent = "+ new note";
+    add.innerHTML = '<span class="nc-plus">+</span><span>new note</span>';
     box.appendChild(add);
     const open = document.querySelector(".notes-slide").classList
       .contains("open");
@@ -1095,6 +1066,11 @@
     const top = head.getBoundingClientRect().top;
     const want = rule.getBoundingClientRect().top - top + 1;
     if (want > head.offsetHeight) head.style.minHeight = want + "px";
+
+    // Folded, the < sits where the > was, level with the title
+    const fold = document.getElementById("fold").getBoundingClientRect();
+    const box = document.querySelector("aside").getBoundingClientRect();
+    document.querySelector(".unfold").style.top = (fold.top - box.top) + "px";
   }
   window.addEventListener("resize", alignGlance);
   document.querySelector(".main-inner")
