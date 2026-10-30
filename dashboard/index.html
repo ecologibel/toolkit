@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>dashboard · toolkit</title>
 <style>
+  /* Pages cross-fade into each other where the browser allows */
+  @view-transition { navigation: auto; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button, input { font-family: inherit; }
   html, body {
@@ -64,8 +67,9 @@
     margin: 0 auto;
     transition: max-width 0.25s ease;
   }
-  .width-normal .main-inner { max-width: 880px; }
-  .width-wide .main-inner { max-width: 1200px; }
+  /* Widths match every page: 672px, wide halfway to full */
+  .width-normal .main-inner { max-width: 672px; }
+  .width-wide .main-inner { max-width: calc(50% + 336px); }
   .width-full .main-inner { max-width: 100%; }
 
   #day {
@@ -74,26 +78,27 @@
     letter-spacing: -0.01em;
     line-height: 1.1;
   }
-  #today-date { color: var(--accent); font-size: 1.1em; margin-top: 6px; }
+  #today-date { color: var(--accent); font-size: 1.1em; margin-top: 14px; }
   .rule {
     border: none;
     border-top: 1px solid var(--border);
-    margin: 18px 0 28px;
+    margin: 30px 0 28px;
   }
 
   /* Square tool buttons, mostly icon, with the name at the bottom */
   .tools {
     display: grid;
     gap: 16px;
-    grid-template-columns: repeat(4, 9.5em);
+    grid-template-columns: repeat(4, minmax(0, 9.5em));
   }
+  /* No background until hovered, opened or reached with Tab, then the
+     notes folders' colour; never an outline */
   .tool {
     align-items: center;
     aspect-ratio: 1;
-    background: var(--panel);
-    border: 1px solid var(--border);
+    background: none;
+    border: none;
     border-radius: 6px;
-    box-shadow: var(--shadow);
     color: var(--fg);
     cursor: pointer;
     display: flex;
@@ -105,9 +110,12 @@
     position: relative;
     text-decoration: none;
     text-transform: lowercase;
-    transition: border-color 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s;
   }
-  .tool:hover { border-color: var(--accent); }
+  .tool:hover, .tool.open, .tool:focus-visible {
+    background: var(--panel);
+    outline: none;
+  }
   .tool svg {
     color: var(--accent);
     flex: 1;
@@ -115,16 +123,16 @@
     min-height: 0;
     width: 62%;
   }
+  /* The toggle sits left of the name, in teal, and turns down when open */
+  .tool-name { align-items: center; display: flex; gap: 6px; }
   .tool .chev {
-    color: var(--fg-muted);
+    color: var(--accent);
+    display: inline-block;
     font-size: 0.7em;
-    position: absolute;
-    right: 9px;
-    top: 7px;
+    transform: rotate(-90deg);
     transition: transform 0.25s ease;
   }
-  .tool.open { border-color: var(--accent); }
-  .tool.open .chev { transform: rotate(180deg); }
+  .tool.open .chev { transform: none; }
 
   /* To-dos views slide open below the buttons */
   .views {
@@ -326,10 +334,12 @@
   .main-inner { animation: dash-in 0.35s ease both; }
   aside > div { animation: side-in 0.35s ease 0.08s both; }
   .today-head {
-    align-items: center;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 8px;
   }
   .today-title { font-size: 1.35em; font-weight: 600; }
 
@@ -352,6 +362,7 @@
     width: 12px;
   }
   .peek:not(.open) .peek-arrow { transform: rotate(-90deg); }
+  .peek-arrow.empty { opacity: 0.35; }
   .peek-count { color: var(--fg-muted); font-size: 0.8em; font-weight: 400; }
   .peek-body {
     display: grid;
@@ -359,7 +370,14 @@
     transition: grid-template-rows 0.25s ease;
   }
   .peek.open .peek-body { grid-template-rows: 1fr; }
-  .peek-inner { min-height: 0; overflow: hidden; }
+  .peek-inner {
+    min-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .peek.open .peek-inner { opacity: 1; transform: none; }
 
   /* Items sit in, level with the toggle's text */
   /* Room on the right for each to do's focus button */
@@ -560,9 +578,6 @@
   const D = ToolkitDates;
   const NOTES_KEY = "notes-data";
   const FOLD_KEY  = "dashboard-today-folded";
-  const GLANCE_KEY = "dashboard-glance";
-  const OPEN_KEY  = "dashboard-todos-open";
-  const PANEL_KEY = "dashboard-panel";
   const SIDE_KEY  = "dashboard-today-width";
   const SIZE_KEY  = "dashboard-size";
   const TODO_KEY  = "todo-data";
@@ -661,9 +676,9 @@
       todos: "to dos" };
     document.querySelectorAll(".tool").forEach(t => {
       const id = t.dataset.tool;
-      t.innerHTML = icon(id) + "<span>" + label[id] + "</span>"
+      t.innerHTML = icon(id) + '<span class="tool-name">'
         + (["notes", "todos"].includes(id) ? '<span class="chev">▼</span>'
-          : "");
+          : "") + label[id] + "</span>";
     });
     const inner = document.querySelector(".views-inner");
     VIEWS.forEach(([id, name]) => {
@@ -674,9 +689,7 @@
       a.innerHTML = icon(id) + "<span>" + name + "</span>";
       inner.appendChild(a);
     });
-    let panel = read(PANEL_KEY);
-    if (panel === null && read(OPEN_KEY) === "1") panel = "todos";
-    setPanel(["notes", "todos"].includes(panel) ? panel : "");
+    setPanel("");
   }
 
   // Notes and to dos each slide a panel open; one at a time
@@ -692,7 +705,6 @@
         a.tabIndex = open ? 0 : -1;
       });
     });
-    store(PANEL_KEY, which);
   }
 
   // Focus opens on the running timer, or the picker
@@ -702,6 +714,13 @@
       e.preventDefault();
       ToolkitFocus.go();
     });
+
+  // An open panel closes when you click anywhere else
+  document.addEventListener("pointerdown", e => {
+    if (!document.querySelector(".views.open")) return;
+    if (e.target.closest(".tools, .views")) return;
+    setPanel("");
+  });
 
   ["notes", "todos"].forEach(id => {
     document.querySelector('.tool[data-tool="' + id + '"]')
@@ -809,11 +828,10 @@
     return out;
   }
 
+  // Glance sections start closed on each visit
+  const glanceState = {};
   function glanceOpen() {
-    try {
-      return Object.assign({ today: true },
-        JSON.parse(read(GLANCE_KEY)) || {});
-    } catch { return { today: true }; }
+    return glanceState;
   }
 
   function setTodo(item, done, data) {
@@ -856,14 +874,14 @@
       head.className = "peek-head";
       head.setAttribute("role", "button");
       head.tabIndex = 0;
-      head.innerHTML = '<span class="peek-arrow">▼</span>'
+      head.innerHTML = '<span class="peek-arrow'
+        + (groups[sec.id].length ? "" : " empty") + '">▼</span>'
         + '<span class="peek-label"></span><span class="peek-count"></span>';
       head.querySelector(".peek-label").textContent = sec.label;
       head.querySelector(".peek-count").textContent = groups[sec.id].length;
       const toggle = () => {
         const st = glanceOpen();
         st[sec.id] = !st[sec.id];
-        store(GLANCE_KEY, JSON.stringify(st));
         wrapEl.classList.toggle("open", st[sec.id]);
       };
       head.addEventListener("click", toggle);
@@ -972,6 +990,7 @@
   function setFolded(folded) {
     aside.classList.toggle("folded", folded);
     store(FOLD_KEY, folded ? "1" : "0");
+    setTimeout(alignGlance, 300);
   }
   document.getElementById("fold").addEventListener("click",
     () => setFolded(true));
@@ -1064,7 +1083,23 @@
     app.classList.remove("size-s", "size-m", "size-l", "width-normal",
       "width-wide", "width-full");
     app.classList.add("size-" + size, "width-" + width);
+    alignGlance();
   }
+
+  // The line under "at a glance" sits level with the one under the date
+  function alignGlance() {
+    const rule = document.querySelector("main .rule");
+    const head = document.querySelector(".today-head");
+    if (!rule || !head || !head.offsetParent) return;
+    head.style.minHeight = "";
+    const top = head.getBoundingClientRect().top;
+    const want = rule.getBoundingClientRect().top - top + 1;
+    if (want > head.offsetHeight) head.style.minHeight = want + "px";
+  }
+  window.addEventListener("resize", alignGlance);
+  document.querySelector(".main-inner")
+    .addEventListener("animationend", alignGlance);
+  if (document.fonts) document.fonts.ready.then(alignGlance);
   applyClasses();
 
   ToolkitSidebar.init({

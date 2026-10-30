@@ -11,6 +11,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap">
 <style>
+  /* Pages cross-fade into each other where the browser allows */
+  @view-transition { navigation: auto; }
+
   :root {
     --no-bg:         #011627;
     --no-fg:         #d6deeb;
@@ -51,6 +54,13 @@
     flex-direction: column;
     height: 100vh;
   }
+
+  /* The editor fades and rises in, as the other pages do */
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  #editor-wrap { animation: page-in 0.35s ease both; }
 
   /* ---- Toolbar ---- */
   /* The toolbar keeps the dark palette in both modes */
@@ -175,8 +185,9 @@
   /* A soft shadow, deeper in dark mode so it still shows */
   #editor-wrap.t-night-owl { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); }
   #editor-wrap.t-github { box-shadow: 0 2px 8px rgba(36, 70, 75, 0.14); }
-  #editor-wrap.width-normal { max-width: 880px; }
-  #editor-wrap.width-wide { max-width: calc(50% + 440px); }
+  /* Widths match every page: 672px, wide halfway to full */
+  #editor-wrap.width-normal { max-width: 672px; }
+  #editor-wrap.width-wide { max-width: calc(50% + 336px); }
   #editor-wrap.width-full { max-width: 100%; }
 
   /* Rainbow brackets by nesting depth */

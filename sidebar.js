@@ -28,7 +28,8 @@
 
   const LAST_KEY  = "toolkit-last";
   const MODE_KEY  = "toolkit-mode";
-  const TODOS_KEY = "toolkit-todos-open";
+  const VIEW_KEY  = "toolkit-todos-view";
+  const SHARED    = { size: "toolkit-size", width: "toolkit-width" };
   const TODO_VIEWS = ["simple", "dates", "weekly", "month", "year", "done"];
 
   // Shared stroke icons, drawn on a 24-unit grid
@@ -38,17 +39,21 @@
   const dot = (x, y) => '<circle cx="' + x + '" cy="' + y
     + '" r="1.3" fill="currentColor" stroke="none"/>';
 
+  // Secondary strokes in each icon are dimmed
+  const dim = inner => '<g opacity="0.4">' + inner + '</g>';
+
   const ITEMS = [
     {
       id: "notes", label: "notes", page: "notes/index.html",
       icon: svg('<path d="M14.5 3h-8A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 '
         + '6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-12z"/>'
-        + '<path d="M14.5 3v4.5H19M8.5 12.5h7M8.5 16.5h5"/>')
+        + '<path d="M14.5 3v4.5H19"/>'
+        + dim('<path d="M8.5 12.5h7M8.5 16.5h5"/>'))
     },
     {
       id: "todos", label: "to dos",
       icon: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="3"/>'
-        + '<path d="M8 12.3l2.8 2.8 5.4-5.6"/>')
+        + dim('<path d="M8 12.3l2.8 2.8 5.4-5.6"/>'))
     },
     {
       id: "simple", label: "simple",
@@ -85,13 +90,14 @@
     },
     {
       id: "codepad", label: "codepad", page: "codepad/index.html",
-      icon: svg('<path d="M8.5 7l-5 5 5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>')
+      icon: svg('<path d="M8.5 7l-5 5 5 5M15.5 7l5 5-5 5"/>'
+        + dim('<path d="M13.5 4.5l-3 15"/>'))
     },
     {
       // A timer ring, partly run down
       id: "focus", label: "focus", page: "focus/index.html",
-      icon: svg('<circle cx="12" cy="13" r="8" opacity="0.35"/>'
-        + '<path d="M12 5a8 8 0 1 1-8 8M10 2h4"/>')
+      icon: svg(dim('<circle cx="12" cy="12" r="8.5"/>')
+        + '<path d="M12 3.5a8.5 8.5 0 1 1-8.5 8.5"/>')
     }
   ];
 
@@ -140,7 +146,9 @@
   }
 
   const MODE_ICON = {
-    dark: svg('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'),
+    // A full-bodied crescent, its hollow cut from the upper right
+    dark: svg('<path d="M12.3 3.6A8.6 8.6 0 1 0 20.6 14.2 7.4 7.4 0 0 1 '
+      + '12.3 3.6z"/>'),
     light: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2'
       + 'M4.6 4.6L6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18'
       + 'M18 6l1.4-1.4"/>')
@@ -160,7 +168,7 @@
   // A page between two edges, wider for each width setting
   const widthIcon = v => {
     const [a, b] = { normal: [9, 15], wide: [6.5, 17.5], full: [4.5, 19.5] }[v];
-    return svg('<path d="M2.5 5v14M21.5 5v14"/>'
+    return svg(dim('<path d="M2.5 5v14M21.5 5v14"/>')
       + '<rect x="' + a + '" y="7" width="' + (b - a) + '" height="10" rx="1.5"/>');
   };
 
@@ -308,6 +316,25 @@
         transform: rotate(180deg);
       }
       #tk-sidebar .tk-btn.has-active { color: #7fdbca; }
+
+      /* Today's to dos, counted on the to dos button */
+      #tk-sidebar .tk-badge {
+        background: #7fdbca;
+        border-radius: 8px;
+        color: #01111f;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        height: 15px;
+        line-height: 15px;
+        min-width: 15px;
+        padding: 0 4px;
+        position: absolute;
+        right: 1px;
+        text-align: center;
+        top: 2px;
+      }
+      #tk-sidebar .tk-badge[hidden] { display: none; }
 
       /* Sync icon: dim when signed out, teal when signed in, red on error */
       /* The sidebar icon is the only sync control */
@@ -595,6 +622,12 @@
       a.href = root + (item.page || "to-dos/index.html#" + item.id);
       a.innerHTML = item.icon;
       a.addEventListener("click", e => {
+        // Choosing a view folds the list into that view's icon
+        if (TODO_VIEWS.includes(item.id)) {
+          store(VIEW_KEY, item.id);
+          setTodosOpen(false, true);
+          showTodosIcon();
+        }
         if (item.id === "focus" && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           focusGo();
@@ -607,7 +640,14 @@
       });
       (TODO_VIEWS.includes(item.id) ? sub.firstChild : items).appendChild(a);
     });
-    setTodosOpen(todosOpen(), false);
+    setTodosOpen(false, false);
+    showTodosIcon();
+
+    // Clicking anywhere else folds the list of views away
+    document.addEventListener("pointerdown", e => {
+      if (todosOpen() && !e.target.closest(".tk-sub, "
+        + '.tk-btn[data-id="todos"]')) setTodosOpen(false, true);
+    });
 
     const controls = nav.querySelector(".tk-controls");
     ["mode", "size", "width"].forEach(kind => {
@@ -676,21 +716,98 @@
     b.innerHTML = item.icon + '<svg class="tk-chev" width="7" height="5" '
       + 'viewBox="0 0 7 5"><path d="M0.5 0.8L3.5 4l3-3.2" fill="none" '
       + 'stroke="currentColor" stroke-width="1.2"/></svg>';
-    b.addEventListener("click", () => {
-      setTodosOpen(!todosOpen(), true);
-      store(TODOS_KEY, todosOpen() ? "1" : "0");
-    });
+    // Opens the list of views until one is chosen
+    b.addEventListener("click", () => setTodosOpen(!todosOpen(), true));
     return b;
   }
 
-  // Open on the to-dos page until a choice has been made
+  // The to dos button keeps its checkbox; its label names the last view
+  function showTodosIcon() {
+    const btn = nav && nav.querySelector('.tk-btn[data-id="todos"]');
+    if (!btn) return;
+    const v = read(VIEW_KEY);
+    const label = TODO_VIEWS.includes(v) ? "to dos: " + VIEW_NAMES[v]
+      : "to dos";
+    btn.dataset.label = label;
+    btn.setAttribute("aria-label", label);
+  }
+
+  // ---- Today's count on the to dos button ----
+
+  let badgeSeen = null;
+
+  function todayCount() {
+    const D = window.ToolkitDates;
+    if (!D) return null;
+    const today = +D.dayStart(new Date());
+    const isToday = r => r && +r.start === today && +r.end === today;
+    let n = 0;
+    try {
+      const data = JSON.parse(read("todo-data")) || {};
+      const lists = [["simple", data.simple || []]];
+      Object.keys(data.toggleData || {}).forEach(id =>
+        lists.push(["toggle-" + id, data.toggleData[id]]));
+      Object.keys(data.weekly || {}).forEach(k =>
+        lists.push([k, data.weekly[k]]));
+      lists.forEach(([src, list]) => (list || []).forEach(t => {
+        if (t.text && !t.done && isToday(D.taskRange(t, src))) n++;
+      }));
+    } catch {}
+    try {
+      const notes = JSON.parse(read("notes-data"));
+      (notes && notes.notes || []).forEach(note => {
+        if (note.trashed) return;
+        (note.blocks || []).forEach(b => {
+          if (b.type !== "todo" || b.checked) return;
+          const t = document.createElement("template");
+          t.innerHTML = String(b.html || "").replace(/<br>/g, " ");
+          const text = t.content.textContent.trim();
+          const anchor = D.dayStart(
+            new Date(b.anchorAt || note.updated || Date.now()));
+          if (text && isToday(D.textRange(text, anchor))) n++;
+        });
+      });
+    } catch {}
+    return n;
+  }
+
+  // Redrawn when the to dos, notes or day change
+  function updateBadge() {
+    const btn = nav && nav.querySelector('.tk-btn[data-id="todos"]');
+    if (!btn) return;
+    const seen = (read("todo-data") || "") + "|" + (read("notes-data") || "")
+      + "|" + new Date().toDateString();
+    if (seen === badgeSeen) return;
+    const n = todayCount();
+    if (n === null) return;
+    badgeSeen = seen;
+    let badge = btn.querySelector(".tk-badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "tk-badge";
+      btn.appendChild(badge);
+    }
+    badge.textContent = n > 99 ? "99+" : n;
+    badge.hidden = !n;
+    btn.title = n ? n + " to do" + (n === 1 ? "" : "s") + " today" : "";
+  }
+
+  // The count needs the shared date reading; load it if the page hasn't
+  function startBadge() {
+    if (!window.ToolkitDates && !document.querySelector('script[src$="dates.js"]')) {
+      const s = document.createElement("script");
+      s.src = (cfg.root || "../") + "dates.js";
+      s.onload = updateBadge;
+      document.head.appendChild(s);
+    }
+    updateBadge();
+    setInterval(updateBadge, 2000);
+  }
+
+  // The list of views starts closed on every page
   function todosOpen() {
-    if (!nav) return false;
-    const sub = nav.querySelector(".tk-sub");
-    if (sub && sub.dataset.state) return sub.dataset.state === "open";
-    const saved = read(TODOS_KEY);
-    if (saved === "1" || saved === "0") return saved === "1";
-    return TODO_VIEWS.includes(cfg.active);
+    const sub = nav && nav.querySelector(".tk-sub");
+    return !!sub && sub.dataset.state === "open";
   }
 
   function setTodosOpen(open, animate) {
@@ -736,7 +853,22 @@
       cfg.mode.apply(mode, true);
     } else {
       cfg[kind].set(next);
+      store(SHARED[kind], next);
     }
+    refresh();
+  }
+
+  // Size and width are shared by every page
+  function applyShared(animate) {
+    ["size", "width"].forEach(kind => {
+      if (!cfg[kind]) return;
+      const v = read(SHARED[kind]);
+      if (CYCLE[kind].includes(v)) {
+        if (cfg[kind].get() !== v) cfg[kind].set(v);
+      } else {
+        store(SHARED[kind], cfg[kind].get());
+      }
+    });
     refresh();
   }
 
@@ -990,6 +1122,10 @@
       if (a.dataset.id === "todos") return;
       a.classList.toggle("active", a.dataset.id === id);
     });
+    if (TODO_VIEWS.includes(id) && read(VIEW_KEY) !== id) {
+      store(VIEW_KEY, id);
+      showTodosIcon();
+    }
     markParent();
   }
 
@@ -1008,12 +1144,13 @@
       store(LAST_KEY, cfg.page || "to-dos/index.html");
       build();
       setActive(cfg.active);
-      refresh();
+      applyShared();
 
       // Focus mode returns to the last page left
       window.addEventListener("pagehide", () => store(FROM_KEY, location.href));
     }
     startFocus();
+    if (!cfg.bare) startBadge();
 
     // Catch up if sync.js started before the sidebar
     if (syncState) setSync(syncState.state, syncState.label);
@@ -1028,6 +1165,9 @@
         refresh();
       }
       if (e.key === FOCUS_KEY) checkFocus();
+      if (!cfg.bare && (e.key === SHARED.size || e.key === SHARED.width)) {
+        applyShared();
+      }
     });
   }
 

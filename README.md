@@ -13,15 +13,16 @@ A [site](https://ecologibel.github.io/toolkit/) hosting a collection of lightwei
 
 ### Sidebar
 
-  - The sidebar on the left of every page links to each tool; click **to dos** to show or hide its six views.
+  - The sidebar on the left of every page links to each tool; click **to dos** to show its six views. Choosing one folds the list away. A small number on the to dos icon counts today's open to dos.
   - The layers icon at the top returns to the dashboard.
-  - The controls at the bottom switch between dark and light mode, change the text size and page width, and show sync status.
+  - The controls at the bottom switch between dark and light mode, change the text size and page width (shared by every page; normal is 672px of content, wide is halfway to full), and show sync status.
+  - Toggles and expanding menus start closed, and close again when you leave them.
   - Press `Ctrl+K` on any page to jump to a note, folder, to dos view, codepad or focus.
 
 ### Dashboard
 
   - Opens whenever you visit the toolkit's address.
-  - **notes** shows your four most recently edited notes; **to dos** shows its six views. Only one opens at a time.
+  - **notes** shows your four most recently edited notes; **to dos** shows its six views. Only one opens at a time, and clicking elsewhere closes it.
   - The *at a glance* sidebar groups dated to dos (including to dos in notes) under today, tomorrow, rest of this week and next week; tick them off there or add a to do for today.
   - Drag the sidebar's dividing line to resize it, or click **»** to fold it away.
 
@@ -34,17 +35,24 @@ A [site](https://ecologibel.github.io/toolkit/) hosting a collection of lightwei
   - **In a note:**
     - Each note has a date (click to change it), tags, a pin toggle, its last edited time and a word count.
     - Type `/` for a menu of block types, or use markdown shortcuts: `#`, `##` and `###` for headings; `-`, `*` or `+` for bullets; `1.` for numbered lists; `[]` or `/to` for to dos; `>` or `/tog` for toggles; `"` for quotes; ` ``` ` for R code; `---` for a line; `/tab` for a table.
-    - Format text with `Ctrl+B`, `Ctrl+I`, `Ctrl+E` (code), `Ctrl+Shift+S` (strikethrough), `Ctrl+Shift+H` (highlight) and `Ctrl+K` (link), or select text for the floating menu.
-    - Drag blocks by their handle, press `Tab` and `Shift+Tab` to indent, and press `Ctrl+Z` and `Ctrl+Y` to undo and redo.
+    - Format text with `Ctrl+B`, `Ctrl+I`, `Ctrl+E` (code), `Ctrl+Shift+S` (strikethrough), `Ctrl+Shift+H` (highlight, in teal) and `Ctrl+K` (link), or select text for the floating menu, where **▾** gives a highlight another colour.
+    - Click a block's handle for its menu: duplicate, copy as markdown, move to another note, delete, turn into another type, or colour. Arrow keys and `Enter` work in the menu.
+    - Drag blocks by their handle, or drop them onto a toggle to put them inside it; press `Tab` and `Shift+Tab` to indent, and `Ctrl+Z` and `Ctrl+Y` to undo and redo.
+    - Select several blocks with `Shift`+click, `Ctrl`+click or by dragging down the page, then drag, copy or delete them together; `Ctrl+A` selects a block's text, and again for every block.
+    - Toggles start closed each time you open a note; an empty toggle's arrow is dimmed.
+    - Click beside the note to go back to the notes.
     - `@dates` and `#tags` are coloured as in the to dos; dated to dos also appear in the to dos dates view and on the dashboard.
 
 ### To dos
 
   - Add `@dates` (e.g. `@today`, `@friday`, `@2/11`, `@next week`) and `#tags` to any to do.
-  - **simple:** one list; **dates:** grouped by when they're due, with your own dates and ranges (toggles start closed on each visit); **week**, **month** and **year:** calendars; **done:** ticked to dos by day.
+  - **simple:** one list; **dates:** grouped by when they're due, with your own dates and ranges (toggles start closed on each visit); **week:** two rows (monday to thursday, then friday to sunday and to schedule); **month** and **year:** calendars; **done:** ticked to dos by day.
   - `@today` keeps the date it was typed; once that date passes, the date turns grey-teal to show the to do is overdue.
   - The month view opens with last week at the top.
   - Deleting a to do or date shows an **undo** button for a few seconds.
+  - Press `Enter` to start a new to do directly beneath; in the middle of a to do, `Enter` splits it in two.
+  - Drag a to do by its handle; drag left or right as you go to change how far it's indented.
+  - Select several to dos with `Ctrl`+click or `Shift`+click, or `Ctrl+A` twice for the whole view, then drag, copy (`Ctrl+C`) or delete them together.
 
 ### Focus
 

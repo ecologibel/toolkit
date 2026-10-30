@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>focus · toolkit</title>
 <style>
+  /* Pages cross-fade into each other where the browser allows */
+  @view-transition { navigation: auto; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button, input { font-family: inherit; }
   html, body {
@@ -25,10 +28,18 @@
     --shadow:     0 4px 22px rgba(0, 0, 0, 0.45);
     --tint:       rgba(127, 219, 202, 0.1);
     --glow:       rgba(127, 219, 202, 0.55);
-    --mark-bg:    rgba(236, 196, 141, 0.3);
+    --mark-bg:    color-mix(in srgb, var(--accent) 16%, transparent);
     --code-bg:    rgba(127, 219, 202, 0.08);
     --code-fg:    #f78c6c;
     --panel:      rgba(19, 85, 92, 0.25);
+    --c-blue: #82aaff;
+    --c-green: #addb67;
+    --c-grey: #8a96a3;
+    --c-orange: #f78c6c;
+    --c-pink: #ff8bb4;
+    --c-purple: #c792ea;
+    --c-red: #ef5350;
+    --c-yellow: #ecc48d;
   }
   .t-light {
     --accent:     #0c9e9a;
@@ -42,10 +53,18 @@
     --shadow:     0 4px 18px rgba(36, 70, 75, 0.14);
     --tint:       rgba(12, 158, 154, 0.1);
     --glow:       rgba(12, 158, 154, 0.4);
-    --mark-bg:    rgba(255, 205, 64, 0.45);
+    --mark-bg:    color-mix(in srgb, var(--accent) 16%, transparent);
     --code-bg:    rgba(12, 158, 154, 0.08);
     --code-fg:    #c9532b;
     --panel:      #dce7e8;
+    --c-blue: #3b6fd6;
+    --c-green: #5f8a1c;
+    --c-grey: #6a737d;
+    --c-orange: #c9532b;
+    --c-pink: #c2407c;
+    --c-purple: #8e44c4;
+    --c-red: #d73a49;
+    --c-yellow: #a66f00;
   }
 
   #app {
@@ -87,11 +106,21 @@
   #switch { left: auto; right: 16px; }
   #switch[hidden] { display: none; }
 
+  /* Widths match every page: 672px, wide halfway to full */
   main {
     margin: 0 auto;
-    max-width: 680px;
+    max-width: 672px;
     padding-top: 8vh;
+    transition: max-width 0.25s ease;
   }
+  /* No sidebar here, so take off its 60px to match the other pages */
+  .width-wide main { max-width: calc(50% + 302px); }
+  .width-full main { max-width: calc(100% - 68px); }
+
+  /* Task text size follows the shared size setting */
+  .size-s { --task-fs: 16px; }
+  .size-m { --task-fs: 18px; }
+  .size-l { --task-fs: 21px; }
   section[hidden] { display: none; }
 
   /* Entrance */
@@ -102,13 +131,17 @@
   .rise { animation: rise 0.35s ease both; }
 
   /* ---- Picker ---- */
+  /* As the simple view's prompt: smaller than tasks, completed colour */
   .pick-title {
-    color: var(--accent);
-    font-size: 1.5em;
+    align-items: center;
+    color: var(--done);
+    display: flex;
+    font-size: calc(var(--task-fs, 18px) * 0.85);
     font-style: italic;
-    margin-bottom: 18px;
-    text-align: center;
+    gap: 10px;
+    margin-bottom: 14px;
   }
+  .pick-title svg { flex-shrink: 0; height: 1.1em; width: 1.1em; }
   #pick-input {
     background: var(--bg-surface);
     border: 1px solid var(--border);
@@ -296,12 +329,20 @@
     padding: 1px 4px;
   }
   #focal-text mark {
-    background: var(--mark-bg);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
     border-radius: 2px;
     color: inherit;
     padding: 0 1px;
   }
   #focal-text a { color: var(--accent); }
+  #focal-text mark[data-c="blue"] { background: color-mix(in srgb, var(--c-blue) 28%, transparent); }
+  #focal-text mark[data-c="green"] { background: color-mix(in srgb, var(--c-green) 28%, transparent); }
+  #focal-text mark[data-c="grey"] { background: color-mix(in srgb, var(--c-grey) 28%, transparent); }
+  #focal-text mark[data-c="orange"] { background: color-mix(in srgb, var(--c-orange) 28%, transparent); }
+  #focal-text mark[data-c="pink"] { background: color-mix(in srgb, var(--c-pink) 28%, transparent); }
+  #focal-text mark[data-c="purple"] { background: color-mix(in srgb, var(--c-purple) 28%, transparent); }
+  #focal-text mark[data-c="red"] { background: color-mix(in srgb, var(--c-red) 28%, transparent); }
+  #focal-text mark[data-c="yellow"] { background: color-mix(in srgb, var(--c-yellow) 28%, transparent); }
   .focal.done #focal-text,
   .focal.done #focal-text span {
     color: var(--done);
@@ -524,7 +565,12 @@
 
   <main>
     <section id="picker" hidden>
-      <div class="pick-title">what are you focusing on?</div>
+      <div class="pick-title"><svg viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <circle cx="10.5" cy="13.5" r="8"/><circle cx="10.5" cy="13.5" r="4"/>
+        <path d="M10.5 13.5L20 4M16.5 3.5h4v4"/>
+        </svg>what are you focusing on?</div>
       <input id="pick-input" autocomplete="off"
         placeholder="search your to dos, or type a new one">
       <div class="pick-label" id="pick-label"></div>
@@ -1105,7 +1151,10 @@
             return;
           }
           const tag = TAGS[n.tagName];
-          out += tag ? "<" + tag + ">" + inner + "</" + tag + ">" : inner;
+          const col = tag === "mark" && /^[a-z]+$/.test(n.dataset.c || "")
+            ? ' data-c="' + n.dataset.c + '"' : "";
+          out += tag ? "<" + tag + col + ">" + inner + "</" + tag + ">"
+            : inner;
         }
       });
       return out;
@@ -1435,6 +1484,19 @@
   });
 
   // ---- Start ----
+
+  // Width and size are shared with every page
+  function applyShared() {
+    const w = read("toolkit-width"), z = read("toolkit-size");
+    app.classList.remove("width-normal", "width-wide", "width-full",
+      "size-s", "size-m", "size-l");
+    app.classList.add("width-" + (["normal", "wide", "full"].includes(w)
+      ? w : "normal"), "size-" + (["s", "m", "l"].includes(z) ? z : "m"));
+  }
+  applyShared();
+  window.addEventListener("storage", e => {
+    if (e.key === "toolkit-width" || e.key === "toolkit-size") applyShared();
+  });
 
   ToolkitSidebar.init({
     bare: true,

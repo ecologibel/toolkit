@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap">
 <style>
+  /* Pages cross-fade into each other where the browser allows */
+  @view-transition { navigation: auto; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button, input { font-family: inherit; }
   html, body {
@@ -32,7 +35,7 @@
     --fg-muted:     #6c7a89;
     --head-tint:    rgba(1, 22, 39, 0.5);
     --hover:        #012a3f;
-    --mark-bg:      rgba(236, 196, 141, 0.3);
+    --mark-bg:      color-mix(in srgb, var(--accent) 16%, transparent);
     --past-bg:      rgba(19, 85, 92, 0.25);
     --scroll-thumb: #1e3a52;
     --shadow:       0 2px 10px rgba(0, 0, 0, 0.45);
@@ -67,7 +70,7 @@
     --fg-muted:     #6a737d;
     --head-tint:    rgba(236, 242, 242, 0.5);
     --hover:        #d9e8ea;
-    --mark-bg:      rgba(255, 205, 64, 0.45);
+    --mark-bg:      color-mix(in srgb, var(--accent) 16%, transparent);
     --past-bg:      #dce7e8;
     --scroll-thumb: #bccfd2;
     --shadow:       0 2px 8px rgba(36, 70, 75, 0.14);
@@ -109,8 +112,9 @@
     padding: 24px 24px 60px;
     transition: max-width 0.25s ease;
   }
-  .width-normal #gallery { max-width: 1248px; }
-  .width-wide #gallery { max-width: calc(50% + 624px); }
+  /* Widths match every page: 672px of content, wide halfway to full */
+  .width-normal #gallery { max-width: 720px; }
+  .width-wide #gallery { max-width: calc(50% + 360px); }
   .width-full #gallery { max-width: 100%; }
 
   /* Preview panel sizes */
@@ -248,15 +252,47 @@
   .card:hover .more-btn, .more-btn:focus-visible { opacity: 0.8; }
   .more-btn:hover { background: var(--hover); opacity: 1; }
 
-  /* Folders: shorter panels with a name and count */
+  /* Folders: shaped like a folder, with a tab at the top left, and the
+     icon, name and count inside. Solid colours let the tab cover the
+     body's top edge */
   .folder-card {
     align-items: center;
+    background: linear-gradient(var(--past-bg), var(--past-bg)), var(--bg);
+    border-top-left-radius: 0;
     flex-direction: row;
     gap: 10px;
     height: auto;
-    min-height: 54px;
+    margin-top: 10px;
+    min-height: 60px;
+    overflow: visible;
     padding: 8px 34px 8px 12px;
   }
+  .folder-card:not(.new-card)::before {
+    background: inherit;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 6px 8px 0 0;
+    content: '';
+    height: 11px;
+    left: -1px;
+    position: absolute;
+    top: -11px;
+    transition: border-color 0.15s;
+    width: 42%;
+  }
+  .folder-card:not(.new-card)::after {
+    background: inherit;
+    content: '';
+    height: 2px;
+    left: 0;
+    position: absolute;
+    top: -1px;
+    width: calc(42% - 2px);
+  }
+  .folder-card:hover::before, .folder-card.open::before {
+    border-color: var(--accent);
+  }
+  .new-card.folder-card { border-top-left-radius: 6px; }
   .folder-card .more-btn { top: 50%; transform: translateY(-50%); }
   .folder-icon { color: var(--accent); flex-shrink: 0; }
   .folder-text { min-width: 0; }
@@ -269,10 +305,9 @@
     white-space: nowrap;
   }
   .folder-name[contenteditable="true"] {
-    background: var(--bg);
-    border-radius: 3px;
+    caret-color: var(--accent);
+    color: var(--accent);
     cursor: text;
-    padding: 0 3px;
     text-overflow: clip;
   }
   .folder-count { color: var(--fg-muted); font-size: 12px; }
@@ -383,8 +418,8 @@
     transition: max-width 0.25s ease;
     width: calc(100% - 48px);
   }
-  .width-normal .sheet { max-width: 900px; }
-  .width-wide .sheet { max-width: calc(50% + 450px); }
+  .width-normal .sheet { max-width: 672px; }
+  .width-wide .sheet { max-width: calc(50% + 312px); }
   .width-full .sheet { max-width: 100%; }
 
   .note-head {
@@ -585,16 +620,20 @@
     transition: opacity 0.15s;
   }
   .add-tag:hover { background: var(--hover); opacity: 1; }
+  /* Fields are typed in place, in teal, without a box */
   .tag-input {
-    background: var(--bg);
-    border: 1px solid var(--accent);
-    border-radius: 3px;
-    color: var(--fg);
+    background: none;
+    border: none;
+    caret-color: var(--accent);
+    color: var(--accent);
+    field-sizing: content;
+    font: inherit;
     font-size: 13px;
+    min-width: 6ch;
     outline: none;
-    padding: 0 5px;
-    width: 120px;
+    padding: 0 4px;
   }
+  .tag-input::placeholder { color: var(--accent); opacity: 0.45; }
   .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
   .card-tags .tag-chip { cursor: pointer; font-size: 11px; padding: 0 4px; }
   .card-tags .tag-chip:hover {
@@ -610,11 +649,12 @@
   }
   #date:hover { background: var(--hover); }
   #date[contenteditable="true"] {
-    background: var(--bg);
-    box-shadow: 0 0 0 1px var(--accent);
+    background: none;
+    caret-color: var(--accent);
+    color: var(--accent);
     cursor: text;
   }
-  #date.invalid { box-shadow: 0 0 0 1px var(--c-red); color: var(--c-red); }
+  #date.invalid { color: var(--c-red); }
   .note-body { flex: 1; padding: 20px 56px 120px 72px; }
 
   /* ---- Blocks: Notion-like spacing ---- */
@@ -671,7 +711,7 @@
     padding: 1px 4px;
   }
   .content mark {
-    background: var(--mark-bg);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
     border-radius: 2px;
     color: inherit;
     padding: 0 1px;
@@ -740,6 +780,27 @@
     width: 14px;
   }
   .type-toggle:not(.open) .toggle-arrow { transform: rotate(-90deg); }
+
+  /* A toggle with nothing in it has a dim arrow */
+  .type-toggle.empty .toggle-arrow { opacity: 0.35; }
+
+  /* A toggle's contents slide in as it opens, and out as it closes */
+  @keyframes block-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes block-out {
+    to { opacity: 0; transform: translateY(-6px); }
+  }
+  .block.reveal { animation: block-in 0.22s ease both; }
+  .block.conceal { animation: block-out 0.15s ease both; }
+
+  /* Dropping onto a toggle puts the blocks inside it */
+  .block.into-toggle > .content {
+    background: var(--drag-bg);
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
   .type-toggle > .content { color: var(--accent); }
 
   /* Quote, callout and code */
@@ -1089,7 +1150,64 @@
   #fmt button:hover { background: var(--hover); }
   #fmt button.on { color: var(--accent); }
   #fmt .f-code { font-family: 'Ubuntu Mono', 'Consolas', monospace; }
-  #fmt .f-mark span { background: var(--mark-bg); padding: 0 3px; }
+  #fmt .f-mark span {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    padding: 0 3px;
+  }
+
+  /* Highlights in the block colours */
+  mark[data-c="grey"] { background: color-mix(in srgb, var(--c-grey) 28%, transparent) !important; }
+  mark[data-c="red"] { background: color-mix(in srgb, var(--c-red) 28%, transparent) !important; }
+  mark[data-c="orange"] { background: color-mix(in srgb, var(--c-orange) 28%, transparent) !important; }
+  mark[data-c="yellow"] { background: color-mix(in srgb, var(--c-yellow) 30%, transparent) !important; }
+  mark[data-c="green"] { background: color-mix(in srgb, var(--c-green) 28%, transparent) !important; }
+  mark[data-c="blue"] { background: color-mix(in srgb, var(--c-blue) 28%, transparent) !important; }
+  mark[data-c="purple"] { background: color-mix(in srgb, var(--c-purple) 28%, transparent) !important; }
+  mark[data-c="pink"] { background: color-mix(in srgb, var(--c-pink) 28%, transparent) !important; }
+  #fmt .f-markc { font-size: 10px; padding-left: 2px; padding-right: 4px; }
+
+  /* Menu items with a teal symbol column, names lined up, and a dim
+     shortcut on the right */
+  .menu-item.sym {
+    align-items: center;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: 30px 1fr auto;
+  }
+  .menu-item .m-sym {
+    color: var(--accent);
+    display: flex;
+    font-size: 13px;
+    justify-content: flex-start;
+    white-space: nowrap;
+  }
+  .menu-item .m-hint {
+    color: var(--fg-muted);
+    font-family: 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 12px;
+    opacity: 0.7;
+    padding-left: 12px;
+    white-space: pre;
+  }
+  .sym-box {
+    border: 1.5px solid var(--accent);
+    border-radius: 3px;
+    display: inline-block;
+    height: 12px;
+    width: 12px;
+  }
+  .menu-item:focus-visible { background: var(--hover); outline: none; }
+  .menu .note-pick { padding: 4px 4px 6px; }
+  .menu .note-pick input {
+    background: none;
+    border: none;
+    caret-color: var(--accent);
+    color: var(--accent);
+    font: inherit;
+    outline: none;
+    padding: 4px 6px;
+    width: 100%;
+  }
 
   /* Lowercase interface labels; your own text is left as typed */
   .menu, .new-card, #fmt, .text-btn, .empty-msg {
@@ -1165,6 +1283,8 @@
       title="code (ctrl+e)">&lt;/&gt;</button>
     <button type="button" data-cmd="mark" class="f-mark"
       title="highlight (ctrl+shift+h)"><span>H</span></button>
+    <button type="button" data-cmd="markc" class="f-markc"
+      title="highlight colour">▾</button>
     <button type="button" data-cmd="link"
       title="link (ctrl+k)">link</button>
   </div>
@@ -1207,13 +1327,30 @@
     h3:      "heading 3",
     bullet:  "bulleted list",
     number:  "numbered list",
-    todo:    "to do",
     toggle:  "toggle",
+    todo:    "to do",
     quote:   "quote",
     callout: "callout",
-    code:    "r code",
+    code:    "code",
     table:   "table",
     divider: "divider"
+  };
+
+  // Each type's teal symbol in the menus, and the shortcut that makes it
+  const TABLE_SYM = '<svg viewBox="0 0 16 16" width="14" height="14" '
+    + 'fill="none" stroke="currentColor" stroke-width="1.4">'
+    + '<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/>'
+    + '<path d="M1.5 6.5h13M1.5 10h13M6 6.5v7"/></svg>';
+  const TODO_SYM = '<span class="sym-box"></span>';
+  const TYPE_SYMS = {
+    text: "", h1: "#", h2: "##", h3: "###", bullet: "•", number: "1.",
+    toggle: "▶", todo: TODO_SYM, quote: "|", callout: "&gt;",
+    code: "&lt;/&gt;", table: TABLE_SYM, divider: "—"
+  };
+  const TYPE_HINTS = {
+    text: "", h1: "# ", h2: "## ", h3: "### ", bullet: "- ", number: "1. ",
+    toggle: "&gt; ", todo: "[] ", quote: "\" ", callout: "/callout",
+    code: "```", table: "/tab", divider: "---"
   };
 
   // Extra words the / menu matches
@@ -1300,7 +1437,10 @@
             return;
           }
           const tag = TAGS[n.tagName];
-          out += tag ? "<" + tag + ">" + inner + "</" + tag + ">" : inner;
+          const col = tag === "mark" && COLOURS.includes(n.dataset.c)
+            ? ' data-c="' + n.dataset.c + '"' : "";
+          out += tag ? "<" + tag + col + ">" + inner + "</" + tag + ">"
+            : inner;
         }
       });
       return out;
@@ -1652,6 +1792,7 @@
   function save(touch = true) {
     if (current && touch) current.updated = Date.now();
     persist();
+    markEmptyToggles();
     if (current) {
       clearTimeout(detailTimer);
       detailTimer = setTimeout(() => {
@@ -1804,6 +1945,11 @@
       undoStack = [];
       redoStack = [];
       lastKind = null;
+
+      // Every toggle starts closed
+      (note.blocks || []).forEach(b => {
+        if (b.type === "toggle") b.open = false;
+      });
     }
     gallery.classList.add("gone");
     trashFab.classList.add("gone");
@@ -2846,6 +2992,7 @@
       lastType[b.indent] = b.type;
       blocksEl.appendChild(blockEl(b, hidden.has(b.id), counts[b.indent]));
     });
+    markEmptyToggles();
   }
 
   function numberLabel(n, depth) {
@@ -4276,9 +4423,58 @@
     } else if (e.target.closest(".toggle-arrow")) {
       checkpoint();
       b.open = !b.open;
-      commit();
+      el.classList.toggle("open", b.open);
+      const arrow = el.querySelector(".toggle-arrow");
+      arrow.setAttribute("aria-label", b.open ? "collapse" : "expand");
+      save();
+      showToggle(b);
     }
   });
+
+  // Show or hide a toggle's contents in place, so the arrow turns and
+  // the blocks slide rather than the note being redrawn
+  function applyHidden() {
+    const hidden = hiddenIds();
+    blocksEl.querySelectorAll(".block").forEach(x => {
+      x.classList.toggle("hidden", hidden.has(x.dataset.id));
+    });
+  }
+
+  function showToggle(b) {
+    const i = indexOf(b.id);
+    const els = blocks().slice(i + 1, subtreeEnd(i))
+      .map(x => blocksEl.querySelector('.block[data-id="' + x.id + '"]'))
+      .filter(Boolean);
+    const play = (x, cls) => {
+      x.classList.remove("reveal", "conceal");
+      void x.offsetWidth;
+      x.classList.add(cls);
+      x.addEventListener("animationend", () => x.classList.remove(cls),
+        { once: true });
+    };
+    if (b.open) {
+      applyHidden();
+      els.filter(x => !x.classList.contains("hidden"))
+        .forEach(x => play(x, "reveal"));
+    } else {
+      const shown = els.filter(x => !x.classList.contains("hidden"));
+      shown.forEach(x => play(x, "conceal"));
+      setTimeout(applyHidden, 150);
+    }
+  }
+
+  // A toggle's arrow dims when nothing is in it but empty lines
+  function markEmptyToggles() {
+    if (!current) return;
+    const list = blocks();
+    list.forEach((b, i) => {
+      if (b.type !== "toggle") return;
+      const has = list.slice(i + 1, subtreeEnd(i)).some(x =>
+        ["divider", "table"].includes(x.type) || blockText(x).trim());
+      const el = blocksEl.querySelector('.block[data-id="' + b.id + '"]');
+      if (el) el.classList.toggle("empty", !has);
+    });
+  }
 
   // ---- Title and date ----
 
@@ -4410,8 +4606,49 @@
     const cmd = btn.dataset.cmd;
     if (cmd === "bold" || cmd === "italic") execFormat(c, cmd);
     else if (cmd === "link") linkBox(c);
+    else if (cmd === "markc") markColours(c, btn);
     else toggleWrap(c, cmd);
   });
+
+  // Highlight colours: teal by default, or a block colour
+  function markColours(c, btn) {
+    const r = selRange();
+    if (!r || r.collapsed || !c.contains(r.commonAncestorContainer)) return;
+    const saved = r.cloneRange();
+    hideMenus();
+    const menu = document.createElement("div");
+    menu.className = "menu";
+    menu.addEventListener("mousedown", e => e.preventDefault());
+    const lab = document.createElement("div");
+    lab.className = "menu-label";
+    lab.textContent = "highlight";
+    menu.appendChild(lab);
+    menu.appendChild(swatches(undefined, col => {
+      const s = getSelection();
+      s.removeAllRanges();
+      s.addRange(saved);
+      checkpoint();
+      const node = saved.commonAncestorContainer;
+      let m = (node.nodeType === 1 ? node : node.parentElement).closest("mark");
+      if (!m || !c.contains(m)) {
+        m = document.createElement("mark");
+        m.appendChild(saved.extractContents());
+        m.querySelectorAll("mark").forEach(x => x.replaceWith(...x.childNodes));
+        saved.insertNode(m);
+      }
+      if (col) m.dataset.c = col;
+      else delete m.dataset.c;
+      syncBlock(c);
+      updateFmt();
+    }, true));
+    menu.querySelectorAll(".swatch").forEach(s => {
+      if (s.title === "default") {
+        s.title = "teal";
+        s.style.background = "color-mix(in srgb, var(--accent) 30%, var(--bg))";
+      }
+    });
+    placeMenu(menu, btn);
+  }
 
   // A small box for a link's address
   function linkBox(c) {
@@ -4482,10 +4719,14 @@
 
   let slash = null;
 
+  // Matching types; an exact shortcut (/to for to do) comes first
   function slashItems(q) {
     const w = q.toLowerCase();
+    const rank = t => ALIASES[t].includes(w) ? 0 : TYPES[t].startsWith(w)
+      ? 1 : 2;
     return Object.keys(TYPES).filter(t => !w || TYPES[t].includes(w)
-      || ALIASES[t].some(a => a.startsWith(w)));
+      || ALIASES[t].some(a => a.startsWith(w)))
+      .sort((x, y) => rank(x) - rank(y));
   }
 
   function updateSlash(c, b, typed) {
@@ -4521,9 +4762,12 @@
     menu.appendChild(head);
     slash.list.forEach((t, k) => {
       const btn = document.createElement("button");
-      btn.className = "menu-item" + (k === slash.index ? " hl" : "");
+      btn.className = "menu-item sym" + (k === slash.index ? " hl" : "");
       btn.type = "button";
-      btn.textContent = TYPES[t];
+      btn.innerHTML = '<span class="m-sym">' + TYPE_SYMS[t] + "</span>"
+        + '<span class="m-name"></span><span class="m-hint">'
+        + TYPE_HINTS[t] + "</span>";
+      btn.querySelector(".m-name").textContent = TYPES[t];
       btn.addEventListener("mousedown", e => e.preventDefault());
       btn.addEventListener("click", () => applySlash(c, t));
       menu.appendChild(btn);
@@ -4635,6 +4879,29 @@
     return [start, end];
   }
 
+  // Ctrl+A in a block first selects its text, as usual; pressed again
+  // (or outside the text) it selects every block, ready to copy
+  document.addEventListener("keydown", e => {
+    if (!current || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey
+      || e.key.toLowerCase() !== "a") return;
+    const a = document.activeElement;
+    if (a === titleEl || (a && a.matches && a.matches("input, textarea"))) {
+      return;
+    }
+    const c = a && a.closest && a.closest("#blocks .content, #blocks .cell");
+    if (c) {
+      if (textBefore(c) !== "" || textAfter(c) !== "") return;
+    } else if (a && a.isContentEditable) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    if (a && a.blur) a.blur();
+    getSelection().removeAllRanges();
+    const ids = visibleBlockEls().map(x => x.dataset.id);
+    select(ids, ids[0]);
+  }, true);
+
   document.addEventListener("copy", e => {
     if (!current || !selected.size) return;
     if (document.activeElement.isContentEditable) return;
@@ -4744,6 +5011,21 @@
     if (!startEl) return;
     const inContent = e.target.closest(".content, .cell");
 
+    // Ctrl+click adds a block to the selection, or takes it out
+    if ((e.ctrlKey || e.metaKey) && !e.target.closest(".content a")) {
+      e.preventDefault();
+      if (document.activeElement.isContentEditable) {
+        document.activeElement.blur();
+      }
+      getSelection().removeAllRanges();
+      const id = startEl.dataset.id;
+      const next = new Set(selected);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      select([...next], id);
+      return;
+    }
+
     // Shift-click selects a run of blocks
     if (e.shiftKey) {
       const active = document.activeElement.closest
@@ -4822,6 +5104,22 @@
     if (!e.target.closest("#note, .menu")) clearSelection();
   });
 
+  // A click beside the note (not on it, a menu or the sidebar) goes back
+  // to the notes; a drag that starts in the note doesn't count
+  let downOutside = false;
+  const OUTSIDE_SKIP = "#note, .menu, #tk-sidebar, #tk-toast, #tk-tip, "
+    + "#tk-switch, #tk-focus-chip, #tk-focus-banner, #fmt, .fmt";
+  document.addEventListener("pointerdown", e => {
+    downOutside = !!current && e.button === 0
+      && !!e.target.closest("#content") && !e.target.closest(OUTSIDE_SKIP);
+  });
+  document.addEventListener("click", e => {
+    if (!downOutside || !current || e.target.closest(OUTSIDE_SKIP)) return;
+    downOutside = false;
+    if (!getSelection().isCollapsed) return;
+    location.hash = "";
+  });
+
   function startHandle(e) {
     e.preventDefault();
     const handle = e.target.closest(".handle");
@@ -4830,7 +5128,20 @@
     const x0 = e.clientX, y0 = e.clientY;
     const from = byId(el.dataset.id).indent;
     let dragging = false, target = null;
-    const ids = blocks().slice(i, subtreeEnd(i)).map(b => b.id);
+
+    // A selected block brings the rest of the selection with it
+    let ids = blocks().slice(i, subtreeEnd(i)).map(b => b.id);
+    if (selected.has(el.dataset.id) && selected.size > 1) {
+      const all = new Set();
+      blocks().forEach((b, j) => {
+        if (selected.has(b.id)) {
+          blocks().slice(j, subtreeEnd(j)).forEach(x => all.add(x.id));
+        }
+      });
+      ids = blocks().filter(b => all.has(b.id)).map(b => b.id);
+    } else {
+      clearSelection();
+    }
 
     const move = ev => {
       if (!dragging && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) {
@@ -4857,6 +5168,8 @@
       document.removeEventListener("pointerup", up);
       document.body.classList.remove("dragging-block");
       dropLine.style.display = "none";
+      blocksEl.querySelectorAll(".into-toggle")
+        .forEach(x => x.classList.remove("into-toggle"));
       if (!dragging) {
         blockMenu(handle, el.dataset.id);
         return;
@@ -4877,6 +5190,16 @@
   // Where a dragged block would land: before which block, at what depth
   function dropTarget(ev, ids, from, x0) {
     const els = visibleBlockEls().filter(el => !ids.includes(el.dataset.id));
+
+    // Over the middle of a toggle: drop inside it, at the bottom
+    const over = els.find(el => {
+      const r = el.getBoundingClientRect();
+      return ev.clientY > r.top + r.height * 0.25
+        && ev.clientY < r.bottom - r.height * 0.25;
+    });
+    const ob = over && byId(over.dataset.id);
+    if (ob && ob.type === "toggle") return { into: ob.id, intoEl: over };
+
     let beforeEl = null;
     for (const el of els) {
       const r = el.getBoundingClientRect();
@@ -4903,6 +5226,13 @@
   }
 
   function showDropLine(t) {
+    blocksEl.querySelectorAll(".into-toggle")
+      .forEach(x => x.classList.toggle("into-toggle", x === t.intoEl));
+    if (t.into) {
+      t.intoEl.classList.add("into-toggle");
+      dropLine.style.display = "none";
+      return;
+    }
     const host = blocksEl.getBoundingClientRect();
     let y;
     if (t.beforeEl) y = t.beforeEl.getBoundingClientRect().top;
@@ -4913,17 +5243,32 @@
     dropLine.style.top = (y - host.top - 1.5) + "px";
   }
 
+  // Move blocks (one run, or a scattered selection) before a block or
+  // into a toggle, keeping their depths relative to the first
   function moveBlocks(ids, t) {
     checkpoint();
+    const set = new Set(ids);
     const list = blocks();
-    const start = indexOf(ids[0]);
-    const moving = list.splice(start, ids.length);
-    const shift = t.indent - moving[0].indent;
+    const moving = list.filter(b => set.has(b.id));
+    const rest = list.filter(b => !set.has(b.id));
+    let at, indent;
+    if (t.into) {
+      const k = rest.findIndex(b => b.id === t.into);
+      const tog = rest[k];
+      at = k + 1;
+      while (at < rest.length && rest[at].indent > tog.indent) at++;
+      indent = tog.indent + 1;
+    } else {
+      at = t.beforeId ? rest.findIndex(b => b.id === t.beforeId)
+        : rest.length;
+      if (at === -1) at = rest.length;
+      indent = t.indent;
+    }
+    const shift = indent - moving[0].indent;
     moving.forEach(b => { b.indent = Math.max(0, b.indent + shift); });
-    let at = t.beforeId ? list.findIndex(b => b.id === t.beforeId)
-      : list.length;
-    if (at === -1) at = list.length;
-    list.splice(at, 0, ...moving);
+    rest.splice(at, 0, ...moving);
+    list.length = 0;
+    list.push(...rest);
     select([]);
     commit();
   }
@@ -4952,9 +5297,17 @@
   function menuItem(item) {
     const btn = document.createElement("button");
     btn.className = "menu-item" + (item.danger ? " danger" : "")
-      + (item.active ? " active" : "");
+      + (item.active ? " active" : "")
+      + (item.sym !== undefined ? " sym" : "");
     btn.type = "button";
-    btn.textContent = item.label;
+    if (item.sym !== undefined) {
+      btn.innerHTML = '<span class="m-sym">' + item.sym + "</span>"
+        + '<span class="m-name"></span><span class="m-hint">'
+        + (item.hint || "") + "</span>";
+      btn.querySelector(".m-name").textContent = item.label;
+    } else {
+      btn.textContent = item.label;
+    }
     btn.addEventListener("click", e => {
       e.stopPropagation();
       if (item.confirm && !btn.dataset.armed) {
@@ -5057,9 +5410,39 @@
       menu.appendChild(d);
     };
 
-    label("turn into");
+    // Actions first: duplicate, copy, move and delete
+    const span = () => selectedSpan()
+      || [indexOf(id), subtreeEnd(indexOf(id))];
+    menu.appendChild(menuItem({ label: "duplicate", sym: "+", run: () => {
+      checkpoint();
+      const sp = span();
+      duplicateRange(sp[0], sp[1]);
+      select([]);
+      commit();
+    } }));
+    menu.appendChild(menuItem({ label: "copy as markdown", sym: "⧉",
+      run: () => {
+        const sp = span();
+        const md = blocksToMd(blocks().slice(sp[0], sp[1]));
+        if (navigator.clipboard) navigator.clipboard.writeText(md);
+        select([]);
+        ToolkitSidebar.toast("copied as markdown");
+      } }));
+    menu.appendChild(menuItem({ label: "move to another note", sym: "→",
+      run: () => moveToNote(handle, span()) }));
+    menu.appendChild(menuItem({ label: "delete", sym: "−", run: () => {
+      checkpoint();
+      const sp = span();
+      blocks().splice(sp[0], sp[1] - sp[0]);
+      if (!blocks().length) blocks().push(newBlock());
+      select([]);
+      commit();
+    } }));
+    rule();
+
     Object.entries(TYPES).forEach(([type, name]) => {
       menu.appendChild(menuItem({ active: b.type === type, label: name,
+        hint: TYPE_HINTS[type], sym: TYPE_SYMS[type],
         run: () => {
           checkpoint();
           targets.forEach(t => {
@@ -5101,23 +5484,96 @@
       }));
     }
 
-    rule();
-    menu.appendChild(menuItem({ label: "duplicate", run: () => {
-      checkpoint();
-      const span = selectedSpan() || [indexOf(id), subtreeEnd(indexOf(id))];
-      duplicateRange(span[0], span[1]);
-      select([]);
-      commit();
-    } }));
-    menu.appendChild(menuItem({ danger: true, label: "delete", run: () => {
-      checkpoint();
-      const span = selectedSpan() || [indexOf(id), subtreeEnd(indexOf(id))];
-      blocks().splice(span[0], span[1] - span[0]);
-      if (!blocks().length) blocks().push(newBlock());
-      select([]);
-      commit();
-    } }));
     placeMenu(menu, handle);
+    menuKeys(menu);
+  }
+
+  // Arrow keys move through a menu's items, Enter chooses one
+  function menuKeys(menu) {
+    menu.tabIndex = -1;
+    menu.focus({ preventScroll: true });
+    menu.addEventListener("keydown", e => {
+      const items = [...menu.querySelectorAll(".menu-item")];
+      if (!items.length) return;
+      let k = items.findIndex(x => x.classList.contains("hl"));
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        const n = items.length;
+        k = k === -1 ? (e.key === "ArrowDown" ? 0 : n - 1)
+          : (k + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
+        items.forEach((x, j) => x.classList.toggle("hl", j === k));
+        items[k].scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter" && k !== -1) {
+        e.preventDefault();
+        e.stopPropagation();
+        items[k].click();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        hideMenus();
+      }
+    });
+  }
+
+  // Move blocks to the end of another note, picked from a list
+  function moveToNote(anchor, sp) {
+    const others = notes.filter(n => !n.trashed && n !== current)
+      .sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    const menu = document.createElement("div");
+    menu.className = "menu";
+    const pick = document.createElement("div");
+    pick.className = "note-pick";
+    const input = document.createElement("input");
+    input.placeholder = "move to which note?";
+    pick.appendChild(input);
+    menu.appendChild(pick);
+    const list = document.createElement("div");
+    menu.appendChild(list);
+    const draw = () => {
+      const q = input.value.trim().toLowerCase();
+      list.innerHTML = "";
+      others.filter(n => !q || (n.title || "untitled").toLowerCase()
+        .includes(q)).slice(0, 12).forEach(n => {
+        list.appendChild(menuItem({ label: (n.title || "").trim()
+          || "untitled", sym: ToolkitSidebar.icon("notes"), run: () => {
+          const before = localStorage.getItem(DATA_KEY);
+          const moving = blocks().splice(sp[0], sp[1] - sp[0]);
+          if (!blocks().length) blocks().push(newBlock());
+          const base = Math.min(...moving.map(x => x.indent));
+          moving.forEach(x => { x.indent -= base; });
+          n.blocks = (n.blocks || []).filter(x => x.type !== "text"
+            || x.html || n.blocks.length > 1).concat(moving);
+          n.updated = Date.now();
+          select([]);
+          commit();
+          ToolkitSidebar.toast("moved to " + ((n.title || "").trim()
+            || "untitled"), () => {
+            localStorage.setItem(DATA_KEY, before);
+            location.reload();
+          });
+        } }));
+      });
+      if (!list.children.length) {
+        const e = document.createElement("div");
+        e.className = "menu-label";
+        e.textContent = "no other notes";
+        list.appendChild(e);
+      }
+    };
+    input.addEventListener("input", draw);
+    input.addEventListener("keydown", e => {
+      e.stopPropagation();
+      const first = list.querySelector(".menu-item");
+      if (e.key === "Enter" && first) {
+        e.preventDefault();
+        first.click();
+      } else if (e.key === "Escape") {
+        hideMenus();
+      }
+    });
+    draw();
+    placeMenu(menu, anchor);
+    input.focus();
   }
 
   document.addEventListener("pointerdown", e => {
@@ -5209,19 +5665,15 @@
     },
     page: "notes/index.html",
 
-    // In the gallery the size control sizes the panels; in a note, the text
+    // Size sets both the gallery's panels and a note's text
     size: {
-      get: () => current ? size : cardSize,
+      get: () => size,
       set: v => {
-        if (current) {
-          size = v;
-          localStorage.setItem(SIZE_KEY, v);
-          applyClasses();
-        } else {
-          cardSize = v;
-          localStorage.setItem(CARD_KEY, v);
-          renderGallery();
-        }
+        size = cardSize = v;
+        localStorage.setItem(SIZE_KEY, v);
+        localStorage.setItem(CARD_KEY, v);
+        applyClasses();
+        if (!current) renderGallery();
       }
     },
     width: {
