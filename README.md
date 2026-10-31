@@ -83,7 +83,8 @@ A [site](https://ecologibel.github.io/toolkit/) hosting a collection of lightwei
   - The site can only see its own files there, not the rest of your Drive.
   - Each tool syncs its own file: `notes.json`, `to-dos.json` (also synced from the dashboard and focus mode) and `r-codepad.json`.
   - The focus timer stays on each device.
-  - The newest edit wins; the overwritten copy is kept in localStorage as `sync-backup-<file>`.
+  - Sync compares last-change times. A local copy replaced by a newer Drive copy is kept as `sync-backup-<file>`; a Drive copy replaced by local data is kept as `sync-backup-<file>-remote`.
+  - If two different copies have the same change time, the current device's copy is kept and the Drive copy is backed up locally.
   - Mode, size, width and similar settings stay on each device.
   - Alt-click the sync icon to sign out.
   - Sync runs on the hosted site only, not from `file://`.

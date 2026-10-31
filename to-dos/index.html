@@ -1128,20 +1128,36 @@
         "Date update paused; free browser storage and reload to retry."
       );
     }
-    let data;
+    let data, raw = null;
     try {
-      data = JSON.parse(
-        localStorage.getItem(STORAGE_KEY)
-      ) || {
+      raw = localStorage.getItem(STORAGE_KEY);
+      data = JSON.parse(raw);
+      const valid = data && typeof data === "object" && !Array.isArray(data)
+        && (data.simple == null || Array.isArray(data.simple))
+        && (data.weekly == null || (typeof data.weekly === "object"
+          && !Array.isArray(data.weekly)))
+        && (data.toggleData == null || (typeof data.toggleData === "object"
+          && !Array.isArray(data.toggleData)))
+        && ["simple", "weekly", "toggleData", "toggle", "dateSections",
+          "datesMigrated"].some(k => k in data);
+      if (raw !== null && !valid) {
+        ToolkitSidebar.preserveRecovery(STORAGE_KEY, raw);
+        data = null;
+      }
+      data = data || {
         simple: [], weekly: {},
-        toggleData: {}, dateKeyVersion: 1
+        toggleData: {}, ...(dateKeysReady ? { dateKeyVersion: 1 } : {})
       };
     } catch {
+      ToolkitSidebar.preserveRecovery(STORAGE_KEY, raw);
       data = {
         simple: [], weekly: {},
-        toggleData: {}, dateKeyVersion: 1
+        toggleData: {}, ...(dateKeysReady ? { dateKeyVersion: 1 } : {})
       };
     }
+    if (!Array.isArray(data.simple)) data.simple = [];
+    if (!data.weekly || typeof data.weekly !== "object"
+        || Array.isArray(data.weekly)) data.weekly = {};
     // Migrate old toggle format
     if (data.toggle && !data.toggleData) {
       data.toggleData = {};
@@ -2733,10 +2749,13 @@
   const NOTES_KEY = "notes-data";
 
   function loadNotes() {
+    let raw = null;
     try {
-      const data = JSON.parse(localStorage.getItem(NOTES_KEY));
+      raw = localStorage.getItem(NOTES_KEY);
+      const data = JSON.parse(raw);
       if (data && Array.isArray(data.notes)) return data;
     } catch {}
+    if (raw !== null) ToolkitSidebar.preserveRecovery(NOTES_KEY, raw);
     return null;
   }
 
