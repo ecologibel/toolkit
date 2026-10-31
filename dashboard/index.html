@@ -845,14 +845,6 @@
       else delete item.block.doneAt;
       store(NOTES_KEY, JSON.stringify(item.notes));
 
-      // Mark the notes as changed so their next sync sends this tick
-      try {
-        const meta = JSON.parse(read("sync-meta-notes.json"));
-        if (meta) {
-          meta.updated = Date.now();
-          store("sync-meta-notes.json", JSON.stringify(meta));
-        }
-      } catch {}
       return;
     }
     item.task.done = done;
@@ -1160,6 +1152,14 @@
     file:     "to-dos.json",
     keys:     [TODO_KEY, "todo-toggle-sections"],
     onRemote: renderToday
+  });
+  ToolSync.init({
+    file:     "notes.json",
+    keys:     [NOTES_KEY],
+    onRemote: () => {
+      renderToday();
+      renderRecent();
+    }
   });
 </script>
 </body>

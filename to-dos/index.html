@@ -566,13 +566,21 @@
     white-space: nowrap;
   }
 
-  /* To-dos from notes: read-only text with a link back to the note */
+  /* To-dos from notes: read-only text with a compact link back to the note */
   .task .task-highlight.note-text { position: static; pointer-events: auto; }
   .note-link {
+    align-items: center;
     color: var(--fg-muted);
+    display: inline-flex;
+    height: 0.9em;
+    justify-content: center;
+    margin-left: 0.3em;
     text-decoration: none;
+    vertical-align: -0.08em;
+    width: 0.9em;
   }
-  .note-link:hover { color: var(--accent); }
+  .note-link svg { display: block; height: 100%; width: 100%; }
+  .note-link:hover, .note-link:focus-visible { color: var(--accent); }
 
   .toggle-count {
     color: var(--fg-muted);
@@ -2770,7 +2778,7 @@
   }
 
   // Every dated to-do in a note that isn't in the trash
-  function noteTodos() {
+  function noteTodos(includeUndated = false) {
     const data = loadNotes();
     if (!data) return [];
     const out = [];
@@ -2784,7 +2792,7 @@
           new Date(b.anchorAt || n.updated || Date.now())
         );
         const r = textRange(text, anchor);
-        if (!r) return;
+        if (!r && !includeUndated) return;
         out.push({
           block: b, note: n, r, src: "_note",
           task: { done: !!b.checked, doneAt: b.doneAt, text }
@@ -2792,6 +2800,27 @@
       });
     });
     return out;
+  }
+
+  // Group dated note tasks using the same day and month rules as to-dos.
+  function collectNoteDated() {
+    const byDay = {}, byMonth = {};
+    noteTodos().forEach(item => {
+      const { r } = item;
+      const day = r.start;
+      const monthKey = "_ym-" + day.getFullYear() + "-"
+        + String(day.getMonth()).padStart(2, "0");
+
+      if (+r.start === +r.end) {
+        const key = dateKey(day);
+        (byDay[key] = byDay[key] || []).push(item);
+      }
+      if (r.end.getMonth() === day.getMonth()
+        && r.end.getFullYear() === day.getFullYear()) {
+        (byMonth[monthKey] = byMonth[monthKey] || []).push(item);
+      }
+    });
+    return { byDay, byMonth };
   }
 
   // Tick or untick a note's to-do from here
@@ -2805,18 +2834,9 @@
     else delete b.doneAt;
     localStorage.setItem(NOTES_KEY, JSON.stringify(data));
 
-    // Mark the notes as changed so their next sync sends this tick
-    try {
-      const key = "sync-meta-notes.json";
-      const meta = JSON.parse(localStorage.getItem(key));
-      if (meta) {
-        meta.updated = Date.now();
-        localStorage.setItem(key, JSON.stringify(meta));
-      }
-    } catch {}
   }
 
-  function noteTaskEl(item) {
+  function noteTaskEl(item, renderFn = renderDates) {
     const el = document.createElement("div");
     el.className = "task note-task" + (item.task.done ? " done" : "");
     el.title = "from the note " + (item.note.title || "untitled");
@@ -2826,7 +2846,7 @@
     box.checked = item.task.done;
     box.addEventListener("change", () => {
       setNoteTodo(item.note.id, item.block.id, box.checked);
-      renderDates();
+      renderFn();
     });
 
     const wrap = document.createElement("div");
@@ -2837,14 +2857,28 @@
     wrap.appendChild(text);
 
     const link = document.createElement("a");
-    link.className = "task-source note-link";
+    const noteTitle = item.note.title.trim() || "untitled";
+    link.className = "note-link";
     link.href = "../notes/index.html#" + encodeURIComponent(item.note.id);
-    link.textContent = "↗ " + (item.note.title.trim() || "untitled");
+    link.setAttribute("aria-label", "open note: " + noteTitle);
+    link.title = "open note: " + noteTitle;
+    link.innerHTML = ToolkitSidebar.icon("notes");
+    const icon = link.querySelector("svg");
+    if (icon) icon.setAttribute("aria-hidden", "true");
+    text.appendChild(link);
 
-    el.append(box, wrap, link, focusBtn(() => ToolkitFocus.go({
+    el.append(box, wrap, focusBtn(() => ToolkitFocus.go({
       blockId: item.block.id, kind: "note", noteId: item.note.id
     }, item.task.text)));
     return el;
+  }
+
+  function addNoteMirrors(el, items, renderFn) {
+    (items || []).forEach(item => {
+      const taskEl = noteTaskEl(item, renderFn);
+      taskEl.classList.add("mirrored");
+      el.appendChild(taskEl);
+    });
   }
 
   // ---- Done ----
@@ -2917,6 +2951,9 @@
         if (isDone(task)) items.push({ src, task });
       });
     });
+    noteTodos(true).forEach(item => {
+      if (isDone(item.task)) items.push(item);
+    });
     items.sort(byDoneAt);
 
     if (!items.length) {
@@ -2930,7 +2967,8 @@
     // One toggle per day ticked, most recent first
     const dState = loadDoneState();
     let group = null, groupEl = null;
-    items.forEach(({ src, task }) => {
+    items.forEach(item => {
+      const { src, task } = item;
       const label = doneDayLabel(task.doneAt);
       if (label !== group) {
         group = label;
@@ -2971,6 +3009,10 @@
         section.appendChild(body);
         el.appendChild(section);
       }
+      if (item.note) {
+        groupEl.appendChild(noteTaskEl(item, renderDone));
+        return;
+      }
       const tEl = createTaskEl(
         task,
         () => saveData(data),
@@ -2991,6 +3033,7 @@
   function renderWeekly() {
     const data = loadData();
     const dated = collectDated(data);
+    const noteDated = collectNoteDated();
     const el = document.getElementById("weekly-view");
     el.innerHTML = "";
 
@@ -3030,6 +3073,7 @@
       tasks.dataset.list = key;
 
       addMirrors(tasks, data, dated.byDay[key], renderWeekly);
+      addNoteMirrors(tasks, noteDated.byDay[key], renderWeekly);
       prepList(data, key).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
@@ -3188,6 +3232,7 @@
   function renderMonth() {
     const data = loadData();
     const dated = collectDated(data);
+    const noteDated = collectNoteDated();
     const el = document.getElementById("month-view");
     const keepTop = el.scrollTop;
 
@@ -3236,6 +3281,7 @@
       tasks.dataset.list = key;
 
       addMirrors(tasks, data, dated.byDay[key], renderMonth);
+      addNoteMirrors(tasks, noteDated.byDay[key], renderMonth);
       prepList(data, key).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
@@ -3347,6 +3393,7 @@
   function renderYear() {
     const data = loadData();
     const dated = collectDated(data);
+    const noteDated = collectNoteDated();
     const el = document.getElementById("year-view");
     el.innerHTML = "";
 
@@ -3387,6 +3434,7 @@
       tasks.dataset.list = listKey;
 
       addMirrors(tasks, data, dated.byMonth[listKey], renderYear);
+      addNoteMirrors(tasks, noteDated.byMonth[listKey], renderYear);
       prepList(data, listKey).forEach((task, ti) => {
         tasks.appendChild(createTaskEl(
           task,
@@ -3636,7 +3684,9 @@
 
   // Show ticks and edits made in the notes in another tab
   window.addEventListener("storage", e => {
-    if (e.key === NOTES_KEY && currentView === "dates") renderDates();
+    if (e.key === NOTES_KEY && currentView !== "simple") {
+      renderCurrentView();
+    }
   });
 
   // Sidebar: views, shared mode, and this view's size and width
@@ -3667,6 +3717,11 @@
   ToolSync.init({
     file:     "to-dos.json",
     keys:     [STORAGE_KEY, TOGGLE_SEC],
+    onRemote: () => renderCurrentView()
+  });
+  ToolSync.init({
+    file:     "notes.json",
+    keys:     [NOTES_KEY],
     onRemote: () => renderCurrentView()
   });
 </script>

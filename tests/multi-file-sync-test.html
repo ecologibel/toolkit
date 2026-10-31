@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-file sync test</title>
+<h1>Multi-file sync test</h1>
+<p>This isolated test uses fake Drive responses and temporary localStorage
+keys. It does not contact Google Drive or modify toolkit records.</p>
+<button id="run" type="button">Run test</button>
+<pre id="result" role="status" aria-live="polite">Ready.</pre>
+<script>
+  window.__syncTestNativeSet = Storage.prototype.setItem;
+  window.__syncTestNativeRemove = Storage.prototype.removeItem;
+  window.__syncTestNativeSetTimeout = window.setTimeout.bind(window);
+  window.__syncTestNativeClearTimeout = window.clearTimeout.bind(window);
+  window.__syncTestNativeAddEventListener = EventTarget.prototype.addEventListener;
+  window.__syncTestPageHide = null;
+  window.__syncTestTimerId = 0;
+  window.setTimeout = () => ++window.__syncTestTimerId;
+  window.clearTimeout = () => {};
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (type === "pagehide") window.__syncTestPageHide = listener;
+    return window.__syncTestNativeAddEventListener.call(
+      this, type, listener, options
+    );
+  };
+  window.setInterval = () => 0;
+  const appendHead = HTMLHeadElement.prototype.appendChild;
+  HTMLHeadElement.prototype.appendChild = function (node) {
+    if (node.tagName === "SCRIPT"
+        && node.src.includes("accounts.google.com/gsi/client")) return node;
+    return appendHead.call(this, node);
+  };
+</script>
+<script src="../sync.js"></script>
+<script src="multi-file-sync-test.js"></script>
