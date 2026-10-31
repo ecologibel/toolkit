@@ -710,16 +710,27 @@
 
   // ---- Today's to-dos ----
 
+  let dateMigrationWarned = false;
+
   function loadTodos() {
+    const dateKeysReady = D.migrateStoredTodoKeys();
+    if (!dateKeysReady && !dateMigrationWarned) {
+      dateMigrationWarned = true;
+      ToolkitSidebar.toast(
+        "Date update paused; free browser storage and reload to retry."
+      );
+    }
     try {
       const data = JSON.parse(read(TODO_KEY));
       if (data && Array.isArray(data.simple)) {
         data.weekly = data.weekly || {};
         data.toggleData = data.toggleData || {};
+        if (dateKeysReady) data.dateKeyVersion = 1;
         return data;
       }
     } catch {}
-    return { simple: [], toggleData: {}, weekly: {} };
+    return { simple: [], toggleData: {}, weekly: {},
+      ...(dateKeysReady ? { dateKeyVersion: 1 } : {}) };
   }
 
   function loadNotes() {
