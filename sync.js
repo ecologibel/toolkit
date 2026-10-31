@@ -60,7 +60,13 @@
   function loadMeta() {
     try {
       const m = JSON.parse(localStorage.getItem(metaKey()));
-      if (m) return m;
+      if (m && typeof m === "object" && !Array.isArray(m)) {
+        return {
+          fileId: typeof m.fileId === "string" ? m.fileId : null,
+          synced: Number.isFinite(m.synced) ? m.synced : 0,
+          updated: Number.isFinite(m.updated) ? m.updated : 0
+        };
+      }
     } catch {}
     return { fileId: null, synced: 0, updated: 0 };
   }
@@ -76,6 +82,45 @@
       if (v !== null) data[k] = v;
     });
     return data;
+  }
+
+  function sameData(a, b) {
+    return cfg.keys.every(k => (a && k in a ? a[k] : null)
+      === (b && k in b ? b[k] : null));
+  }
+
+  function validRemote(remote) {
+    if (!remote || typeof remote !== "object" || Array.isArray(remote)
+        || !Number.isFinite(remote.updated) || remote.updated < 0
+        || !remote.data || typeof remote.data !== "object"
+        || Array.isArray(remote.data)) return false;
+    return cfg.keys.every(k => !(k in remote.data)
+      || typeof remote.data[k] === "string");
+  }
+
+  function backupRemote(remote) {
+    try {
+      nativeSet.call(localStorage, "sync-backup-" + cfg.file + "-remote",
+        JSON.stringify({ data: remote.data, saved: Date.now(),
+          updated: remote.updated }));
+      return true;
+    } catch (err) {
+      console.warn("Sync: couldn't keep a remote backup", err);
+      return false;
+    }
+  }
+
+  // Keep metadata edits made while an upload is in flight.
+  function finishUpload(m, data, uploadedAt) {
+    const latest = loadMeta();
+    latest.fileId = m.fileId || latest.fileId;
+    latest.synced = uploadedAt;
+    latest.updated = Math.max(latest.updated || 0, uploadedAt);
+    if (!sameData(data, collect())) {
+      latest.updated = Math.max(latest.updated || 0, uploadedAt + 1);
+      again = true;
+    }
+    saveMeta(latest);
   }
 
   // Record real edits to synced keys, ignoring re-saves of the same value
@@ -174,19 +219,25 @@
       API + "?fields=files(id)&spaces=appDataFolder&q=" + q
     );
     const { files } = await res.json();
-    return files.length ? files[0].id : null;
+    return Array.isArray(files) && files.length
+      && typeof files[0].id === "string" ? files[0].id : null;
   }
 
   async function readRemote(m) {
-    if (!m.fileId) m.fileId = await findFile();
-    if (!m.fileId) return null;
-    try {
-      const res = await drive(API + "/" + m.fileId + "?alt=media");
-      return await res.json();
-    } catch (err) {
-      if (err.message !== "http 404") throw err;
-      m.fileId = null;
-      return readRemote(m);
+    let retried = false;
+    while (true) {
+      if (!m.fileId) m.fileId = await findFile();
+      if (!m.fileId) return null;
+      try {
+        const res = await drive(API + "/" + m.fileId + "?alt=media");
+        const remote = await res.json();
+        if (!validRemote(remote)) throw new Error("invalid remote data");
+        return remote;
+      } catch (err) {
+        if (err.message !== "http 404" || retried) throw err;
+        m.fileId = null;
+        retried = true;
+      }
     }
   }
 
@@ -276,18 +327,33 @@
       } else if (!remote) {
         if (Object.keys(collect()).length) {
           m.updated = m.updated || Date.now();
-          await writeRemote(m, { data: collect(), updated: m.updated });
-          m.synced = m.updated;
+          const data = collect(), uploadedAt = m.updated;
+          await writeRemote(m, { data, updated: uploadedAt });
+          finishUpload(m, data, uploadedAt);
+        } else {
+          saveMeta(m);
         }
-        saveMeta(m);
 
       // A device's first sync takes the Drive copy
       } else if (!m.synced || remote.updated > m.updated) {
         applyRemote(m, remote);
-      } else if (m.updated > remote.updated) {
-        await writeRemote(m, { data: collect(), updated: m.updated });
-        m.synced = m.updated;
+      } else if (remote.updated === m.updated
+          && !sameData(collect(), remote.data)) {
+        // Equal timestamps can happen when two devices save in the same ms.
+        // Keep the remote copy, then use this device's data as the winner.
+        if (!backupRemote(remote)) throw new Error("backup failed");
+        const data = collect();
+        m.updated = Math.max(Date.now(), remote.updated + 1);
         saveMeta(m);
+        const uploadedAt = m.updated;
+        await writeRemote(m, { data, updated: uploadedAt });
+        finishUpload(m, data, uploadedAt);
+      } else if (m.updated > remote.updated) {
+        // Preserve the remote winner before replacing it with newer local data.
+        if (!backupRemote(remote)) throw new Error("backup failed");
+        const data = collect(), uploadedAt = m.updated;
+        await writeRemote(m, { data, updated: uploadedAt });
+        finishUpload(m, data, uploadedAt);
       } else {
         saveMeta(m);
       }
@@ -306,17 +372,31 @@
 
   // Send a pending save before the page is hidden or closed
   function flush() {
-    if (!pushTimer || !getToken()) return;
+    if (!pushTimer || !getToken() || busy) return;
     clearTimeout(pushTimer);
     pushTimer = null;
     const m = loadMeta();
-    if (!m.fileId) return;
-    writeRemote(m, { data: collect(), updated: m.updated }, true)
+    if (!m.fileId) {
+      sync();
+      return;
+    }
+    const data = collect(), uploadedAt = m.updated;
+    busy = true;
+    writeRemote(m, { data, updated: uploadedAt }, true)
       .then(() => {
-        m.synced = m.updated;
-        saveMeta(m);
+        finishUpload(m, data, uploadedAt);
       })
-      .catch(() => {});
+      .catch(err => {
+        console.warn("Sync flush:", err);
+        setStatus(err.message === "auth" ? signedOutState() : "error");
+      })
+      .finally(() => {
+        busy = false;
+        if (again) {
+          again = false;
+          sync();
+        }
+      });
   }
 
   // ---- Status button ----
@@ -407,6 +487,9 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") flush();
       else if (getToken()) sync();
+    });
+    window.addEventListener("online", () => {
+      if (getToken()) sync();
     });
     window.addEventListener("pagehide", flush);
     setInterval(() => {
