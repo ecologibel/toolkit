@@ -1008,8 +1008,10 @@
 
 <script src="../sync.js"></script>
 <script src="../sidebar.js"></script>
+<script src="../dates.js"></script>
 <script>
   const STORAGE_KEY = "todo-data";
+  const DATES = ToolkitDates;
   const THEME_KEY   = "todo-theme";
   const VIEW_KEY    = "todo-view";
 
@@ -1115,21 +1117,47 @@
 
   // ---- Data ----
 
+  let dateKeysReady = true;
+  let dateMigrationWarned = false;
+
   function loadData() {
-    let data;
+    dateKeysReady = DATES.migrateStoredTodoKeys();
+    if (!dateKeysReady && !dateMigrationWarned) {
+      dateMigrationWarned = true;
+      ToolkitSidebar.toast(
+        "Date update paused; free browser storage and reload to retry."
+      );
+    }
+    let data, raw = null;
     try {
-      data = JSON.parse(
-        localStorage.getItem(STORAGE_KEY)
-      ) || {
+      raw = localStorage.getItem(STORAGE_KEY);
+      data = JSON.parse(raw);
+      const valid = data && typeof data === "object" && !Array.isArray(data)
+        && (data.simple == null || Array.isArray(data.simple))
+        && (data.weekly == null || (typeof data.weekly === "object"
+          && !Array.isArray(data.weekly)))
+        && (data.toggleData == null || (typeof data.toggleData === "object"
+          && !Array.isArray(data.toggleData)))
+        && ["simple", "weekly", "toggleData", "toggle", "dateSections",
+          "datesMigrated"].some(k => k in data);
+      if (raw !== null && !valid) {
+        ToolkitSidebar.preserveRecovery(STORAGE_KEY, raw);
+        data = null;
+      }
+      data = data || {
         simple: [], weekly: {},
-        toggleData: {}
+        toggleData: {}, ...(dateKeysReady ? { dateKeyVersion: 1 } : {})
       };
     } catch {
+      ToolkitSidebar.preserveRecovery(STORAGE_KEY, raw);
       data = {
         simple: [], weekly: {},
-        toggleData: {}
+        toggleData: {}, ...(dateKeysReady ? { dateKeyVersion: 1 } : {})
       };
     }
+    if (!Array.isArray(data.simple)) data.simple = [];
+    if (!data.weekly || typeof data.weekly !== "object"
+        || Array.isArray(data.weekly)) data.weekly = {};
     // Migrate old toggle format
     if (data.toggle && !data.toggleData) {
       data.toggleData = {};
@@ -1142,6 +1170,7 @@
       delete data.toggle;
     }
     if (!data.toggleData) data.toggleData = {};
+    if (dateKeysReady) data.dateKeyVersion = 1;
 
     // Move old toggle sections into the simple list, once
     if (!data.datesMigrated) {
@@ -1170,6 +1199,7 @@
 
   // Save, leaving out empty day lists so scrolling adds nothing
   function saveData(data) {
+    if (dateKeysReady) data.dateKeyVersion = 1;
     const weekly = {};
     Object.keys(data.weekly).forEach(k => {
       if (data.weekly[k].length) weekly[k] = data.weekly[k];
@@ -1240,10 +1270,6 @@
     );
     mon.setHours(0, 0, 0, 0);
     return mon;
-  }
-
-  function dateKey(d) {
-    return d.toISOString().slice(0, 10);
   }
 
   function isPast(d) {
@@ -1663,218 +1689,11 @@
 
   // ---- Date highlighting ----
 
-  // Month names, full or short, not followed by more letters
-  const MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?'
-    + '|apr(?:il)?|may|june?|july?|aug(?:ust)?'
-    + '|sep(?:t(?:ember)?)?|oct(?:ober)?'
-    + '|nov(?:ember)?|dec(?:ember)?)(?![a-z])';
-
-  // Weekday names, full or short, not followed by more letters
-  const WEEKDAY_RE = '(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?'
-    + '|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?![a-z])';
-
-  // One date or period, without the @
-  const DATE_CORE = '(?:'
-    // Relative days: today, tomorrow, yesterday
-    + '(?:today|tomorrow|yesterday)(?![a-z])'
-    // Relative periods: this week, next month
-    + '|(?:this|next)\\s+(?:week|month)(?![a-z])'
-    // Day names: monday, next tuesday
-    + '|(?:next\\s+)?' + WEEKDAY_RE
-    // DD Month YYYY or DD Month
-    + '|\\d{1,2}\\s+' + MONTH_RE + '(?:,?\\s+\\d{4})?'
-    // Month DD, YYYY or Month DD
-    + '|' + MONTH_RE + '\\s+\\d{1,2}(?!\\d)(?:,?\\s*\\d{4})?'
-    // DD/MM/YYYY or DD-MM-YYYY
-    + '|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}'
-    // A whole month: november, nov 2026
-    + '|' + MONTH_RE + '(?:\\s+\\d{4})?'
-    + ')';
-
-  // @ then a date or period, optionally "to" another one
-  const DATE_PATTERN = new RegExp(
-    '@' + DATE_CORE
-    + '(?:\\s*(?:–|—|-|to(?![a-z]))\\s*' + DATE_CORE + ')?',
-    'gi'
-  );
-
-  // Calendar dates that place a task in the calendar views
-  const MONTHS = [
-    "jan", "feb", "mar", "apr", "may", "jun",
-    "jul", "aug", "sep", "oct", "nov", "dec"
-  ];
-  const FIXED_DATES = [
-    {
-      d: 1, m: 2, y: 3,
-      re: new RegExp(
-        '@(\\d{1,2})\\s+' + MONTH_RE + '(?:,?\\s+(\\d{4}))?', 'i'
-      )
-    },
-    {
-      d: 2, m: 1, y: 3,
-      re: new RegExp(
-        '@' + MONTH_RE + '\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?', 'i'
-      )
-    },
-    {
-      d: 1, m: 2, numeric: true, y: 3,
-      re: /@(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/
-    }
-  ];
-
-  // Read the first calendar date in a task, or null
-  function parseTaskDate(text) {
-    for (const f of FIXED_DATES) {
-      const x = f.re.exec(text || "");
-      if (!x) continue;
-      const day = +x[f.d];
-      const mon = f.numeric
-        ? +x[f.m] - 1
-        : MONTHS.indexOf(x[f.m].slice(0, 3).toLowerCase());
-      let yr = x[f.y] ? +x[f.y] : new Date().getFullYear();
-      if (yr < 100) yr += 2000;
-      const d = new Date(yr, mon, day);
-      if (d.getMonth() === mon && d.getDate() === day) return d;
-    }
-    return null;
-  }
-  // ---- Date ranges ----
-
-  function dayStart(d) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }
-
-  function addDays(d, n) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-  }
-
-  // Monday of the week containing a day
-  function weekStart(d) {
-    const day = d.getDay();
-    return addDays(dayStart(d), day === 0 ? -6 : 1 - day);
-  }
-
-  function monthRange(y, m) {
-    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 0) };
-  }
-
-  function oneDay(d) {
-    return { start: d, end: d };
-  }
-
-  const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-  // A single date or period as a day range, relative to an anchor day
-  function parseOne(str, anchor) {
-    const s = str.trim().toLowerCase().replace(/\s+/g, " ");
-    const mon = name => MONTHS.indexOf(name.slice(0, 3));
-    let m;
-
-    if (s === "today") return oneDay(anchor);
-    if (s === "tomorrow") return oneDay(addDays(anchor, 1));
-    if (s === "yesterday") return oneDay(addDays(anchor, -1));
-    if ((m = s.match(/^(this|next) (week|month)$/))) {
-      const next = m[1] === "next";
-      if (m[2] === "week") {
-        const start = addDays(weekStart(anchor), next ? 7 : 0);
-        return { start, end: addDays(start, 6) };
-      }
-      return monthRange(
-        anchor.getFullYear(), anchor.getMonth() + (next ? 1 : 0)
-      );
-    }
-
-    // Day names: the next one on or after the anchor; "next" means next week
-    if ((m = s.match(new RegExp('^(next )?' + WEEKDAY_RE + '$')))) {
-      const wd = WEEKDAYS.indexOf(s.replace("next ", "").slice(0, 3));
-      if (m[1]) {
-        const start = addDays(weekStart(anchor), 7);
-        return oneDay(addDays(start, (wd + 6) % 7));
-      }
-      return oneDay(addDays(anchor, (wd - anchor.getDay() + 7) % 7));
-    }
-
-    // Fixed dates; with no year, a date long past means next year
-    let day, month, year;
-    if ((m = s.match(new RegExp(
-      '^(\\d{1,2}) ' + MONTH_RE + '(?:,? (\\d{4}))?$')))) {
-      [day, month, year] = [+m[1], mon(m[2]), m[3]];
-    } else if ((m = s.match(new RegExp(
-      '^' + MONTH_RE + ' (\\d{1,2})(?:,? ?(\\d{4}))?$')))) {
-      [day, month, year] = [+m[2], mon(m[1]), m[3]];
-    } else if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))) {
-      [day, month, year] = [+m[1], +m[2] - 1, m[3]];
-    } else if ((m = s.match(new RegExp('^' + MONTH_RE + '(?: (\\d{4}))?$')))) {
-      let y = m[2] ? +m[2] : anchor.getFullYear();
-      let r = monthRange(y, mon(m[1]));
-      if (!m[2] && r.end < anchor) r = monthRange(y + 1, mon(m[1]));
-      return r;
-    } else {
-      return null;
-    }
-    let y = year ? +year : anchor.getFullYear();
-    if (y < 100) y += 2000;
-    let d = new Date(y, month, day);
-    if (d.getMonth() !== month || d.getDate() !== day) return null;
-    if (!year && d < addDays(anchor, -31)) d = new Date(y + 1, month, day);
-    return oneDay(d);
-  }
-
-  // A date, period, or "A to B" range as a day range
-  function parseSpec(str, anchor) {
-    const one = parseOne(str, anchor);
-    if (one) return one;
-    const parts = str.split(/\s*(?:–|—|\bto\b)\s*|\s+-\s+|-/i);
-    if (parts.length !== 2) return null;
-    const a = parseOne(parts[0], anchor), b = parseOne(parts[1], anchor);
-    if (!a || !b || b.end < a.start) return null;
-    return { start: a.start, end: b.end };
-  }
-
-  // The first date token in a task, in lower case, or ""
-  function firstToken(text) {
-    DATE_PATTERN.lastIndex = 0;
-    const m = DATE_PATTERN.exec(text || "");
-    return m ? m[0].toLowerCase() : "";
-  }
-
-  // The first date in some text that resolves, as a day range
-  function textRange(text, anchor) {
-    DATE_PATTERN.lastIndex = 0;
-    let m;
-    while ((m = DATE_PATTERN.exec(text || ""))) {
-      const r = parseSpec(m[0].slice(1), anchor);
-      if (r) return r;
-    }
-    return null;
-  }
-
-  // A task's date: from its text, else from the calendar cell it is in
-  function taskRange(task, listKey) {
-    const anchor = dayStart(
-      task.anchorAt ? new Date(task.anchorAt) : new Date()
-    );
-    const r = textRange(task.text, anchor);
-    if (r) return r;
-    if (listKey && /^\d{4}-\d{2}-\d{2}$/.test(listKey)) {
-      return oneDay(keyToDate(listKey));
-    }
-    if (listKey && listKey.startsWith("_ym-")) {
-      const [, y, mm] = listKey.split("-");
-      return monthRange(+y, +mm);
-    }
-    return null;
-  }
-
-  // Note when a task's date was written, so relative dates stay put
-  function stampAnchor(task) {
-    const tok = firstToken(task.text);
-    if (tok !== task.anchorTok || !task.anchorAt) {
-      task.anchorTok = tok;
-      task.anchorAt = Date.now();
-    }
-  }
-
+  const DATE_PATTERN = DATES.datePattern();
+  const {
+    addDays, dateKey, dayStart, firstToken, keyToDate, monthRange, oneDay,
+    parseSpec, stampAnchor, taskRange, textRange, weekStart
+  } = DATES;
 
   function escapeHtml(str) {
     return str
@@ -2930,10 +2749,13 @@
   const NOTES_KEY = "notes-data";
 
   function loadNotes() {
+    let raw = null;
     try {
-      const data = JSON.parse(localStorage.getItem(NOTES_KEY));
+      raw = localStorage.getItem(NOTES_KEY);
+      const data = JSON.parse(raw);
       if (data && Array.isArray(data.notes)) return data;
     } catch {}
+    if (raw !== null) ToolkitSidebar.preserveRecovery(NOTES_KEY, raw);
     return null;
   }
 
@@ -3031,16 +2853,6 @@
   // Most recently ticked first; older ticks without a time last
   function byDoneAt(a, b) {
     return (b.task.doneAt || 0) - (a.task.doneAt || 0);
-  }
-
-  // Turn a stored day key back into its local date
-  function keyToDate(key) {
-    const [y, m, d] = key.split("-").map(Number);
-    for (const off of [0, 1, -1]) {
-      const c = new Date(y, m - 1, d + off);
-      if (dateKey(c) === key) return c;
-    }
-    return new Date(y, m - 1, d);
   }
 
   // Short name for the list a task lives in

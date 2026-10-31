@@ -710,23 +710,45 @@
 
   // ---- Today's to-dos ----
 
+  let dateMigrationWarned = false;
+
   function loadTodos() {
+    const dateKeysReady = D.migrateStoredTodoKeys();
+    if (!dateKeysReady && !dateMigrationWarned) {
+      dateMigrationWarned = true;
+      ToolkitSidebar.toast(
+        "Date update paused; free browser storage and reload to retry."
+      );
+    }
+    const raw = read(TODO_KEY);
     try {
-      const data = JSON.parse(read(TODO_KEY));
-      if (data && Array.isArray(data.simple)) {
-        data.weekly = data.weekly || {};
-        data.toggleData = data.toggleData || {};
+      const data = JSON.parse(raw);
+      const valid = data && typeof data === "object" && !Array.isArray(data)
+        && Array.isArray(data.simple)
+        && (data.weekly == null || (typeof data.weekly === "object"
+          && !Array.isArray(data.weekly)))
+        && (data.toggleData == null || (typeof data.toggleData === "object"
+          && !Array.isArray(data.toggleData)));
+      if (valid) {
+        if (!data.weekly) data.weekly = {};
+        if (!data.toggleData) data.toggleData = {};
+        if (dateKeysReady) data.dateKeyVersion = 1;
         return data;
       }
     } catch {}
-    return { simple: [], toggleData: {}, weekly: {} };
+    if (raw !== null) ToolkitSidebar.preserveRecovery(TODO_KEY, raw);
+    return { simple: [], toggleData: {}, weekly: {},
+      ...(dateKeysReady ? { dateKeyVersion: 1 } : {}) };
   }
 
   function loadNotes() {
+    const raw = read(NOTES_KEY);
     try {
-      const data = JSON.parse(read(NOTES_KEY));
-      if (data && Array.isArray(data.notes)) return data;
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.notes)
+          && (data.folders == null || Array.isArray(data.folders))) return data;
     } catch {}
+    if (raw !== null) ToolkitSidebar.preserveRecovery(NOTES_KEY, raw);
     return null;
   }
 

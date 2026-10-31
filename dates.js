@@ -27,7 +27,7 @@
     + '|(?:next\\s+)?' + WEEKDAY_RE
     + '|\\d{1,2}\\s+' + MONTH_RE + '(?:,?\\s+\\d{4})?'
     + '|' + MONTH_RE + '\\s+\\d{1,2}(?!\\d)(?:,?\\s*\\d{4})?'
-    + '|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}'
+    + '|\\d{1,2}[\\/\\-]\\d{1,2}(?:[\\/\\-]\\d{2,4})?'
     + '|' + MONTH_RE + '(?:\\s+\\d{4})?'
     + ')';
 
@@ -63,18 +63,108 @@
     return { end: d, start: d };
   }
 
-  // The to-dos' calendar keys, as they store them
-  function dateKey(d) {
+  let legacyKeyMode = false;
+  let migrationBlocked = false;
+
+  // Calendar keys are local civil dates, independent of the time zone.
+  function localDateKey(d) {
+    return String(d.getFullYear()).padStart(4, "0") + "-"
+      + String(d.getMonth() + 1).padStart(2, "0") + "-"
+      + String(d.getDate()).padStart(2, "0");
+  }
+
+  // Older releases used UTC-derived keys; these helpers migrate that format.
+  function legacyDateKey(d) {
     return d.toISOString().slice(0, 10);
   }
 
-  function keyToDate(key) {
+  function legacyKeyToDate(key) {
     const [y, m, d] = key.split("-").map(Number);
     for (const off of [0, 1, -1]) {
       const c = new Date(y, m - 1, d + off);
-      if (dateKey(c) === key) return c;
+      if (legacyDateKey(c) === key) return c;
     }
     return new Date(y, m - 1, d);
+  }
+
+  // Calendar keys are YYYY-MM-DD local dates.
+  function dateKey(d) {
+    return legacyKeyMode ? legacyDateKey(d) : localDateKey(d);
+  }
+
+  function keyToDate(key) {
+    if (legacyKeyMode) return legacyKeyToDate(key);
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // Convert old UTC-derived weekly keys once, keeping a local copy first.
+  function migrateStoredTodoKeys() {
+    if (migrationBlocked) return false;
+    let raw;
+    try {
+      raw = localStorage.getItem("todo-data");
+    } catch {
+      legacyKeyMode = true;
+      migrationBlocked = true;
+      return false;
+    }
+    if (raw == null) { legacyKeyMode = false; return true; }
+
+    let data;
+    try { data = JSON.parse(raw); } catch { legacyKeyMode = false; return true; }
+    if (!data || typeof data !== "object" || Array.isArray(data)
+        || (data.weekly != null && (typeof data.weekly !== "object"
+          || Array.isArray(data.weekly)))) {
+      legacyKeyMode = false;
+      return true;
+    }
+    if (data.dateKeyVersion >= 1) { legacyKeyMode = false; return true; }
+
+    const weekly = data.weekly || {};
+    const converted = {};
+    let changed = false;
+    Object.keys(weekly).forEach(key => {
+      let next = key;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+        next = localDateKey(legacyKeyToDate(key));
+        if (next !== key) changed = true;
+      }
+      const list = weekly[key];
+      if (Object.prototype.hasOwnProperty.call(converted, next)
+          && Array.isArray(converted[next]) && Array.isArray(list)) {
+        converted[next].push(...list);
+      } else {
+        converted[next] = list;
+      }
+    });
+
+    if (changed) {
+      try {
+        const backupKey = "todo-date-key-backup-v1";
+        const previous = localStorage.getItem(backupKey);
+        if (previous == null) localStorage.setItem(backupKey, raw);
+        else if (previous !== raw) {
+          localStorage.setItem(backupKey + "-" + Date.now(), raw);
+        }
+      } catch {
+        legacyKeyMode = true;
+        migrationBlocked = true;
+        return false;
+      }
+    }
+
+    data.weekly = converted;
+    data.dateKeyVersion = 1;
+    try {
+      localStorage.setItem("todo-data", JSON.stringify(data));
+      legacyKeyMode = false;
+      return true;
+    } catch {
+      legacyKeyMode = true;
+      migrationBlocked = true;
+      return false;
+    }
   }
 
   // A single date or period as a day range, relative to an anchor day
@@ -112,7 +202,7 @@
     } else if ((m = s.match(new RegExp(
       '^' + MONTH_RE + ' (\\d{1,2})(?:,? ?(\\d{4}))?$')))) {
       [day, month, year] = [+m[2], mon(m[1]), m[3]];
-    } else if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))) {
+    } else if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/))) {
       [day, month, year] = [+m[1], +m[2] - 1, m[3]];
     } else if ((m = s.match(new RegExp('^' + MONTH_RE + '(?: (\\d{4}))?$')))) {
       const y = m[2] ? +m[2] : anchor.getFullYear();
@@ -134,11 +224,22 @@
   function parseSpec(str, anchor) {
     const one = parseOne(str, anchor);
     if (one) return one;
-    const parts = str.split(/\s*(?:–|—|\bto\b)\s*|\s+-\s+|-/i);
-    if (parts.length !== 2) return null;
-    const a = parseOne(parts[0], anchor), b = parseOne(parts[1], anchor);
-    if (!a || !b || b.end < a.start) return null;
-    return { end: b.end, start: a.start };
+    const join = (left, right) => {
+      const a = parseOne(left, anchor), b = parseOne(right, anchor);
+      return !a || !b || b.end < a.start
+        ? null : { end: b.end, start: a.start };
+    };
+    const named = str.split(/\s*(?:–|—|\bto\b)\s*/i);
+    if (named.length === 2) {
+      const range = join(named[0], named[1]);
+      if (range) return range;
+    }
+    for (let i = 0; i < str.length; i++) {
+      if (str[i] !== "-") continue;
+      const range = join(str.slice(0, i), str.slice(i + 1));
+      if (range) return range;
+    }
+    return null;
   }
 
   function firstToken(text) {
@@ -182,6 +283,10 @@
       task.anchorTok = tok;
       task.anchorAt = Date.now();
     }
+  }
+
+  function datePattern() {
+    return new RegExp(DATE_PATTERN.source, DATE_PATTERN.flags);
   }
 
   function escapeHtml(str) {
@@ -269,8 +374,9 @@
   }
 
   window.ToolkitDates = {
-    addDays, dateKey, dayStart, decorate, firstToken, highlight, keyToDate,
-    parseSpec, stampAnchor, taskRange, textRange
+    addDays, dateKey, datePattern, dayStart, decorate, firstToken, highlight,
+    keyToDate, migrateStoredTodoKeys, monthRange, oneDay, parseSpec,
+    stampAnchor, taskRange, textRange, weekStart
   };
 
 })();

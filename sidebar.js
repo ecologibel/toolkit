@@ -833,7 +833,7 @@
 
   let toastEl = null, toastTimer = null;
 
-  function toast(message, undo) {
+  function toast(message, undo, action) {
     if (!toastEl) {
       toastEl = document.createElement("div");
       toastEl.id = "tk-toast";
@@ -855,6 +855,16 @@
       });
       toastEl.appendChild(btn);
     }
+    if (action) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = action.label;
+      btn.addEventListener("click", () => {
+        hideToast();
+        action.run();
+      });
+      toastEl.appendChild(btn);
+    }
     void toastEl.offsetWidth;
     toastEl.classList.add("show");
     toastTimer = setTimeout(hideToast, 6000);
@@ -863,6 +873,33 @@
   function hideToast() {
     clearTimeout(toastTimer);
     if (toastEl) toastEl.classList.remove("show");
+  }
+
+  // Preserve unreadable saved data before a tool falls back to an empty view.
+  function preserveRecovery(key, raw) {
+    if (raw == null) return false;
+    const backupKey = "recovery-backup-" + key + "-" + Date.now()
+      + "-" + Math.random().toString(36).slice(2, 7);
+    let saved = false;
+    try {
+      localStorage.setItem(backupKey, raw);
+      saved = true;
+    } catch {}
+    toast(saved
+      ? "Saved data couldn't be read; a recovery copy was kept."
+      : "Saved data couldn't be read; download a recovery copy now.", null, {
+      label: "download copy",
+      run: () => {
+        const blob = new Blob([raw], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = key + "-recovery.txt";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    });
+    return saved;
   }
 
   // ---- Quick switcher ----
@@ -1254,7 +1291,7 @@
 
   window.ToolkitSidebar = {
     folderIcon, folderIcons: Object.keys(FOLDER_ICONS), icon, init,
-    openSwitcher, refresh, setActive, setSync, title, toast
+    openSwitcher, preserveRecovery, refresh, setActive, setSync, title, toast
   };
 
   window.ToolkitFocus = {

@@ -1791,8 +1791,16 @@
   }
 
   function load() {
-    let data = null;
-    try { data = JSON.parse(localStorage.getItem(DATA_KEY)); } catch {}
+    let raw = null, data = null;
+    try {
+      raw = localStorage.getItem(DATA_KEY);
+      data = JSON.parse(raw);
+    } catch {}
+    if (raw !== null && (!data || !Array.isArray(data.notes)
+        || (data.folders != null && !Array.isArray(data.folders)))) {
+      ToolkitSidebar.preserveRecovery(DATA_KEY, raw);
+      data = null;
+    }
     folders = (data && Array.isArray(data.folders) ? data.folders : [])
       .filter(f => f && f.id)
       .map(f => ({ icon: ToolkitSidebar.folderIcons.includes(f.icon)
