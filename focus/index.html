@@ -657,6 +657,7 @@
 <script src="../sync.js"></script>
 <script src="../sidebar.js"></script>
 <script src="../dates.js"></script>
+<script src="../recovery.js"></script>
 <script>
 (function () {
   const D = ToolkitDates, F = ToolkitFocus;
@@ -722,7 +723,7 @@
     }
     const raw = read(TODO_KEY);
     try {
-      const data = JSON.parse(raw);
+      let data = JSON.parse(raw);
       const valid = data && typeof data === "object" && !Array.isArray(data)
         && Array.isArray(data.simple)
         && (data.weekly == null || (typeof data.weekly === "object"
@@ -730,6 +731,8 @@
         && (data.toggleData == null || (typeof data.toggleData === "object"
           && !Array.isArray(data.toggleData)));
       if (valid) {
+        data = ToolkitRecovery.recoverTodos(data, raw, recoveryRaw =>
+          ToolkitSidebar.preserveRecovery(TODO_KEY, recoveryRaw));
         if (!data.weekly) data.weekly = {};
         if (!data.toggleData) data.toggleData = {};
         if (dateKeysReady) data.dateKeyVersion = 1;
