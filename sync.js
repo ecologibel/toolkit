@@ -10,6 +10,13 @@
 //     keys: ["todo-data"],
 //     onRemote: () => renderCurrentView()
 //   });
+//   ToolSync.init({
+//     file: "notes.json",
+//     keys: ["notes-data"],
+//     onRemote: () => renderCurrentView()
+//   });
+// Each file keeps separate metadata and conflict handling. The sync control
+// reports the combined state and processes pending files independently.
 
 (function () {
 
@@ -49,23 +56,24 @@
   const nativeRemove = Storage.prototype.removeItem;
   const nativeSet    = Storage.prototype.setItem;
 
-  let again = false, applying = false, busy = false;
-  let btn = null, cfg = null, pushTimer = null, state = null;
+  const configs = new Map();
+  const runtime = new Map();
+  let applying = false, btn = null, state = null, initialized = false;
   let tokenClient = null;
 
   // ---- Local metadata ----
 
-  function metaKey() {
+  function metaKey(cfg) {
     return "sync-meta-" + cfg.file;
   }
 
-  function conflictKey() {
+  function conflictKey(cfg) {
     return "sync-conflict-" + cfg.file;
   }
 
-  function loadMeta() {
+  function loadMeta(cfg) {
     try {
-      const m = JSON.parse(localStorage.getItem(metaKey()));
+      const m = JSON.parse(localStorage.getItem(metaKey(cfg)));
       if (m && typeof m === "object" && !Array.isArray(m)) {
         return {
           fileId: typeof m.fileId === "string" ? m.fileId : null,
@@ -77,11 +85,11 @@
     return { fileId: null, synced: 0, updated: 0 };
   }
 
-  function saveMeta(m) {
-    nativeSet.call(localStorage, metaKey(), JSON.stringify(m));
+  function saveMeta(cfg, m) {
+    nativeSet.call(localStorage, metaKey(cfg), JSON.stringify(m));
   }
 
-  function collect() {
+  function collect(cfg) {
     const data = {};
     cfg.keys.forEach(k => {
       const v = localStorage.getItem(k);
@@ -90,12 +98,12 @@
     return data;
   }
 
-  function sameData(a, b) {
+  function sameData(cfg, a, b) {
     return cfg.keys.every(k => (a && k in a ? a[k] : null)
       === (b && k in b ? b[k] : null));
   }
 
-  function validRemote(remote) {
+  function validRemote(cfg, remote) {
     if (!remote || typeof remote !== "object" || Array.isArray(remote)
         || !Number.isFinite(remote.updated) || remote.updated < 0
         || !remote.data || typeof remote.data !== "object"
@@ -104,7 +112,7 @@
       || typeof remote.data[k] === "string");
   }
 
-  function backupRemote(remote) {
+  function backupRemote(cfg, remote) {
     try {
       nativeSet.call(localStorage, "sync-backup-" + cfg.file + "-remote",
         JSON.stringify({ data: remote.data, saved: Date.now(),
@@ -116,10 +124,10 @@
     }
   }
 
-  function preserveConflict(remote) {
-    if (!backupRemote(remote)) return false;
+  function preserveConflict(cfg, remote) {
+    if (!backupRemote(cfg, remote)) return false;
     try {
-      nativeSet.call(localStorage, conflictKey(), JSON.stringify({
+      nativeSet.call(localStorage, conflictKey(cfg), JSON.stringify({
         detected: Date.now(), updated: remote.updated
       }));
       return true;
@@ -129,51 +137,58 @@
     }
   }
 
-  function savedConflictRemote() {
+  function savedConflictRemote(cfg) {
     try {
       const saved = JSON.parse(localStorage.getItem(
         "sync-backup-" + cfg.file + "-remote"));
-      return validRemote(saved) ? saved : null;
+      return validRemote(cfg, saved) ? saved : null;
     } catch {
       return null;
     }
   }
 
   // Keep metadata edits made while an upload is in flight.
-  function finishUpload(m, data, uploadedAt) {
-    const latest = loadMeta();
+  function finishUpload(cfg, task, m, data, uploadedAt) {
+    const latest = loadMeta(cfg);
     latest.fileId = m.fileId || latest.fileId;
     latest.synced = uploadedAt;
     latest.updated = Math.max(latest.updated || 0, uploadedAt);
-    if (!sameData(data, collect())) {
+    const unchanged = sameData(cfg, data, collect(cfg));
+    if (!unchanged) {
       latest.updated = Math.max(latest.updated || 0, uploadedAt + 1);
-      again = true;
+      task.again = true;
     }
-    saveMeta(latest);
+    saveMeta(cfg, latest);
+    return unchanged;
   }
 
   // Record real edits to synced keys, ignoring re-saves of the same value
   function watch(fn) {
     return function (key, ...rest) {
-      const tracked = this === localStorage && cfg && !applying
-        && cfg.keys.includes(String(key));
-      const before = tracked ? this.getItem(key) : null;
+      const tracked = this === localStorage && !applying
+        ? Array.from(configs.values()).filter(cfg =>
+          cfg.keys.includes(String(key))) : [];
+      const before = new Map(tracked.map(cfg => [cfg, this.getItem(key)]));
       fn.call(this, key, ...rest);
-      if (tracked && this.getItem(key) !== before) markChanged();
+      tracked.forEach(cfg => {
+        if (this.getItem(key) !== before.get(cfg)) markChanged(cfg);
+      });
     };
   }
 
   Storage.prototype.removeItem = watch(nativeRemove);
   Storage.prototype.setItem    = watch(nativeSet);
 
-  function markChanged() {
-    const m = loadMeta();
+  function markChanged(cfg) {
+    const task = runtime.get(cfg.file);
+    if (!task) return;
+    const m = loadMeta(cfg);
     m.updated = Math.max(Date.now(), m.updated + 1);
-    saveMeta(m);
+    saveMeta(cfg, m);
     if (!getToken()) return;
-    setStatus("pending");
-    clearTimeout(pushTimer);
-    pushTimer = setTimeout(sync, PUSH_DELAY);
+    setStatus("pending", cfg);
+    clearTimeout(task.pushTimer);
+    task.pushTimer = setTimeout(() => sync(cfg), PUSH_DELAY);
   }
 
   // ---- Auth ----
@@ -188,41 +203,42 @@
 
   function onToken(resp) {
     if (resp.error) {
-      setStatus("signedOut");
+      configs.forEach(cfg => setStatus(signedOutState(cfg), cfg));
       return;
     }
     nativeSet.call(localStorage, TOKEN_KEY, JSON.stringify({
       expires: Date.now() + resp.expires_in * 1000,
       token:   resp.access_token
     }));
-    sync();
+    syncAll();
   }
 
   function connect() {
     if (!window.google || !google.accounts) {
-      setStatus("error");
+      setAllStatus("error");
       return;
     }
     if (!tokenClient) {
       tokenClient = google.accounts.oauth2.initTokenClient({
         callback:       onToken,
         client_id:      CLIENT_ID,
-        error_callback: () => setStatus(signedOutState()),
+        error_callback: () => configs.forEach(cfg =>
+          setStatus(signedOutState(cfg), cfg)),
         scope:          SCOPE
       });
     }
-    tokenClient.requestAccessToken({ prompt: "" });
+    tokenClient.requestAccessToken({ prompt: "select_account" });
   }
 
   function signOut() {
     const token = getToken();
     if (token && window.google) google.accounts.oauth2.revoke(token);
     nativeRemove.call(localStorage, TOKEN_KEY);
-    setStatus("signedOut");
+    configs.forEach(cfg => setStatus(signedOutState(cfg), cfg));
   }
 
-  function signedOutState() {
-    return loadMeta().synced ? "reconnect" : "signedOut";
+  function signedOutState(cfg) {
+    return loadMeta(cfg).synced ? "reconnect" : "signedOut";
   }
 
   // ---- Drive requests ----
@@ -242,7 +258,7 @@
     return res;
   }
 
-  async function findFile() {
+  async function findFile(cfg) {
     const q = encodeURIComponent("name = '" + cfg.file + "'");
     const res = await drive(
       API + "?fields=files(id)&spaces=appDataFolder&q=" + q
@@ -252,15 +268,15 @@
       && typeof files[0].id === "string" ? files[0].id : null;
   }
 
-  async function readRemote(m) {
+  async function readRemote(cfg, m) {
     let retried = false;
     while (true) {
-      if (!m.fileId) m.fileId = await findFile();
+      if (!m.fileId) m.fileId = await findFile(cfg);
       if (!m.fileId) return null;
       try {
         const res = await drive(API + "/" + m.fileId + "?alt=media");
         const remote = await res.json();
-        if (!validRemote(remote)) throw new Error("invalid remote data");
+        if (!validRemote(cfg, remote)) throw new Error("invalid remote data");
         return remote;
       } catch (err) {
         if (err.message !== "http 404" || retried) throw err;
@@ -270,7 +286,7 @@
     }
   }
 
-  async function writeRemote(m, payload, keepalive = false) {
+  async function writeRemote(cfg, m, payload, keepalive = false) {
     const body = JSON.stringify(payload);
     if (m.fileId) {
       await drive(UPLOAD + "/" + m.fileId + "?uploadType=media", {
@@ -303,9 +319,9 @@
 
   // ---- Sync ----
 
-  function applyRemote(m, remote) {
+  function applyRemote(cfg, m, remote) {
     const incoming = remote.data || {};
-    const before = collect();
+    const before = collect(cfg);
     const changed =
       JSON.stringify(before) !== JSON.stringify(incoming);
 
@@ -328,120 +344,130 @@
     }
 
     m.synced = m.updated = remote.updated;
-    saveMeta(m);
+    saveMeta(cfg, m);
     if (changed && cfg.onRemote) cfg.onRemote();
   }
 
-  async function sync() {
+  async function sync(cfg) {
+    const task = runtime.get(cfg.file);
+    if (!task) return;
     if (!getToken()) {
-      setStatus(signedOutState());
+      setStatus(signedOutState(cfg), cfg);
       return;
     }
-    if (busy) {
-      again = true;
+    if (task.busy) {
+      task.again = true;
       return;
     }
-    busy = true;
-    clearTimeout(pushTimer);
-    pushTimer = null;
-    setStatus("syncing");
+    task.busy = true;
+    clearTimeout(task.pushTimer);
+    task.pushTimer = null;
+    setStatus("syncing", cfg);
     try {
-      if (localStorage.getItem(conflictKey())) {
-        setStatus("conflict");
+      if (localStorage.getItem(conflictKey(cfg))) {
+        setStatus("conflict", cfg);
         return;
       }
-      const m = loadMeta();
+      const m = loadMeta(cfg);
       const startUpdated = m.updated;
-      const remote = await readRemote(m);
+      const remote = await readRemote(cfg, m);
 
       // Skip this round if the tool saved while the request ran
-      if (loadMeta().updated !== startUpdated) {
-        again = true;
+      if (loadMeta(cfg).updated !== startUpdated) {
+        task.again = true;
       } else if (m.synced && m.updated > m.synced
           && remote && remote.updated > m.synced
-          && !sameData(collect(), remote.data)) {
+          && !sameData(cfg, collect(cfg), remote.data)) {
         // Both this device and Drive changed since the last shared version.
         // Keep this device's data active and save Drive's copy for resolution.
-        if (!preserveConflict(remote)) throw new Error("conflict backup failed");
-        setStatus("conflict");
+        if (!preserveConflict(cfg, remote)) {
+          throw new Error("conflict backup failed");
+        }
+        setStatus("conflict", cfg);
         return;
       } else if (!remote) {
-        if (Object.keys(collect()).length) {
+        if (Object.keys(collect(cfg)).length) {
           m.updated = m.updated || Date.now();
-          const data = collect(), uploadedAt = m.updated;
-          await writeRemote(m, { data, updated: uploadedAt });
-          finishUpload(m, data, uploadedAt);
+          const data = collect(cfg), uploadedAt = m.updated;
+          await writeRemote(cfg, m, { data, updated: uploadedAt });
+          finishUpload(cfg, task, m, data, uploadedAt);
         } else {
-          saveMeta(m);
+          saveMeta(cfg, m);
         }
 
       // A device's first sync takes the Drive copy
       } else if (!m.synced || remote.updated > m.updated) {
-        applyRemote(m, remote);
+        applyRemote(cfg, m, remote);
       } else if (remote.updated === m.updated
-          && !sameData(collect(), remote.data)) {
+          && !sameData(cfg, collect(cfg), remote.data)) {
         // Equal timestamps can happen when two devices save in the same ms.
         // Keep the remote copy, then use this device's data as the winner.
-        if (!backupRemote(remote)) throw new Error("backup failed");
-        const data = collect();
+        if (!backupRemote(cfg, remote)) throw new Error("backup failed");
+        const data = collect(cfg);
         m.updated = Math.max(Date.now(), remote.updated + 1);
-        saveMeta(m);
+        saveMeta(cfg, m);
         const uploadedAt = m.updated;
-        await writeRemote(m, { data, updated: uploadedAt });
-        finishUpload(m, data, uploadedAt);
+        await writeRemote(cfg, m, { data, updated: uploadedAt });
+        finishUpload(cfg, task, m, data, uploadedAt);
       } else if (m.updated > remote.updated) {
         // Preserve the remote winner before replacing it with newer local data.
-        if (!backupRemote(remote)) throw new Error("backup failed");
-        const data = collect(), uploadedAt = m.updated;
-        await writeRemote(m, { data, updated: uploadedAt });
-        finishUpload(m, data, uploadedAt);
+        if (!backupRemote(cfg, remote)) throw new Error("backup failed");
+        const data = collect(cfg), uploadedAt = m.updated;
+        await writeRemote(cfg, m, { data, updated: uploadedAt });
+        finishUpload(cfg, task, m, data, uploadedAt);
       } else {
-        saveMeta(m);
+        saveMeta(cfg, m);
       }
-      setStatus("synced");
+      setStatus("synced", cfg);
     } catch (err) {
       console.warn("Sync:", err);
-      setStatus(err.message === "auth" ? signedOutState() : "error");
+      setStatus(err.message === "auth" ? signedOutState(cfg) : "error", cfg);
     } finally {
-      busy = false;
-      if (again) {
-        again = false;
-        sync();
+      task.busy = false;
+      if (task.again) {
+        task.again = false;
+        sync(cfg);
       }
     }
   }
 
   // Send a pending save before the page is hidden or closed
-  function flush() {
-    if (!pushTimer || !getToken() || busy) return;
-    if (localStorage.getItem(conflictKey())) {
-      setStatus("conflict");
+  function flush(cfg) {
+    const task = runtime.get(cfg.file);
+    if (!task || !task.pushTimer || !getToken() || task.busy) return;
+    if (localStorage.getItem(conflictKey(cfg))) {
+      setStatus("conflict", cfg);
       return;
     }
-    clearTimeout(pushTimer);
-    pushTimer = null;
-    const m = loadMeta();
+    clearTimeout(task.pushTimer);
+    task.pushTimer = null;
+    const m = loadMeta(cfg);
     if (!m.fileId) {
-      sync();
+      sync(cfg);
       return;
     }
-    const data = collect(), uploadedAt = m.updated;
-    busy = true;
-    writeRemote(m, { data, updated: uploadedAt }, true)
+    const data = collect(cfg), uploadedAt = m.updated;
+    task.busy = true;
+    writeRemote(cfg, m, { data, updated: uploadedAt }, true)
       .then(() => {
-        finishUpload(m, data, uploadedAt);
+        const unchanged = finishUpload(cfg, task, m, data, uploadedAt);
+        setStatus(unchanged ? "synced" : "pending", cfg);
       })
       .catch(err => {
         console.warn("Sync flush:", err);
-        setStatus(err.message === "auth" ? signedOutState() : "error");
+        setStatus(err.message === "auth" ? signedOutState(cfg) : "error", cfg);
       })
       .finally(() => {
-        busy = false;
-        if (again) {
-          again = false;
-          sync();
+        task.busy = false;
+        if (task.again) {
+          task.again = false;
+          sync(cfg);
         }
       });
+  }
+
+  function flushAll() {
+    configs.forEach(flush);
   }
 
   // ---- Status button ----
@@ -450,7 +476,13 @@
   function notify() {
     if (!state) return;
     if (window.ToolkitSidebar && ToolkitSidebar.setSync) {
-      ToolkitSidebar.setSync(state, SIDEBAR[state]);
+      const conflict = state === "conflict"
+        ? Array.from(configs.values()).find(cfg =>
+          runtime.get(cfg.file).state === "conflict") : null;
+      const label = conflict
+        ? "sync: conflict in " + conflict.file + ", click to resolve"
+        : SIDEBAR[state];
+      ToolkitSidebar.setSync(state, label);
     }
   }
 
@@ -458,16 +490,23 @@
   function click(e) {
     if (state === "noClient" || state === "unavailable") return;
     if (e && e.altKey) signOut();
-    else if (state === "conflict") resolveConflict();
-    else if (getToken()) sync();
+    else if (state === "conflict") resolveNextConflict();
+    else if (getToken()) syncAll();
     else connect();
   }
 
-  async function resolveConflict() {
-    if (busy) return;
+  function resolveNextConflict() {
+    const cfg = Array.from(configs.values()).find(item =>
+      localStorage.getItem(conflictKey(item)));
+    if (cfg) resolveConflict(cfg);
+  }
+
+  async function resolveConflict(cfg) {
+    const task = runtime.get(cfg.file);
+    if (!task || task.busy) return;
     const answer = window.prompt(
-      "Sync conflict: type LOCAL to keep this device's copy, or DRIVE to use "
-      + "Drive's copy. Cancel to leave both copies unchanged."
+      "Sync conflict in " + cfg.file + ": type LOCAL to keep this device's "
+      + "copy, or DRIVE to use Drive's copy. Cancel to leave both unchanged."
     );
     if (answer === null) return;
     const choice = answer.trim().toUpperCase();
@@ -476,56 +515,85 @@
       return;
     }
 
-    const savedRemote = savedConflictRemote();
+    const savedRemote = savedConflictRemote(cfg);
     if (!savedRemote) {
-      setStatus("error");
+      setStatus("error", cfg);
       return;
     }
 
-    busy = true;
-    setStatus("syncing");
+    task.busy = true;
+    setStatus("syncing", cfg);
     try {
-      const m = loadMeta();
-      const latestRemote = await readRemote(m);
+      const m = loadMeta(cfg);
+      const latestRemote = await readRemote(cfg, m);
       if (!latestRemote) throw new Error("conflict remote missing");
 
       if (choice === "LOCAL") {
         // Keep a recovery copy of the latest Drive version before replacing it.
-        if (!backupRemote(latestRemote)) throw new Error("backup failed");
+        if (!backupRemote(cfg, latestRemote)) throw new Error("backup failed");
         m.synced = latestRemote.updated;
         m.updated = Math.max(Date.now(), latestRemote.updated + 1);
-        saveMeta(m);
-        nativeRemove.call(localStorage, conflictKey());
-        again = true;
+        saveMeta(cfg, m);
+        nativeRemove.call(localStorage, conflictKey(cfg));
+        task.again = true;
       } else {
         // applyRemote saves this device's current data before replacing it.
-        applyRemote(m, latestRemote);
-        nativeRemove.call(localStorage, conflictKey());
-        setStatus("synced");
+        applyRemote(cfg, m, latestRemote);
+        nativeRemove.call(localStorage, conflictKey(cfg));
+        setStatus("synced", cfg);
       }
     } catch (err) {
       console.warn("Sync conflict resolution:", err);
-      setStatus(err.message === "auth" ? signedOutState() : "error");
+      setStatus(err.message === "auth" ? signedOutState(cfg) : "error", cfg);
     } finally {
-      busy = false;
-      if (again) {
-        again = false;
-        sync();
+      task.busy = false;
+      if (task.again) {
+        task.again = false;
+        sync(cfg);
       }
     }
   }
 
-  function setStatus(next) {
-    state = next;
+  function aggregateStatus() {
+    const states = Array.from(runtime.values()).map(task => task.state);
+    const priority = ["conflict", "error", "pending", "syncing",
+      "reconnect", "signedOut", "noClient", "unavailable"];
+    return priority.find(item => states.includes(item)) ||
+      (states.length ? "synced" : null);
+  }
+
+  function setStatus(next, cfg) {
+    if (cfg) {
+      const task = runtime.get(cfg.file);
+      if (task) task.state = next;
+    } else {
+      setAllStatus(next);
+      return;
+    }
+    state = aggregateStatus();
     notify();
     if (!btn) return;
     btn.dataset.state = state;
     btn.textContent = LABELS[state];
-    const last = loadMeta().synced;
+    const last = Math.max(0, ...Array.from(configs.values())
+      .map(item => loadMeta(item).synced));
     btn.title = getToken()
       ? "Click to sync now, alt-click to sign out" +
         (last ? "\nLast change: " + new Date(last).toLocaleString() : "")
       : "Sync with your Google Drive";
+  }
+
+  function setAllStatus(next) {
+    configs.forEach(cfg => {
+      const task = runtime.get(cfg.file);
+      if (task) task.state = next;
+    });
+    state = aggregateStatus();
+    notify();
+    if (btn) {
+      btn.dataset.state = state;
+      btn.textContent = LABELS[state];
+    }
   }
 
   function addButton() {
@@ -546,6 +614,7 @@
       }
       #tool-sync:hover { border-color: #8a96a3; }
       #tool-sync[data-state="error"] { color: #e06c75; }
+      #tool-sync[data-state="conflict"] { color: #e5c07b; }
       #tool-sync[data-state="synced"] { opacity: 0.6; }
     `;
     document.head.appendChild(style);
@@ -560,43 +629,68 @@
   // ---- Init ----
 
   function init(options) {
-    cfg = options;
+    if (!options || typeof options.file !== "string"
+        || !options.file || !Array.isArray(options.keys)
+        || !options.keys.length) return;
+
+    let cfg = configs.get(options.file);
+    if (!cfg) {
+      cfg = {
+        file: options.file,
+        keys: options.keys.slice(),
+        onRemote: options.onRemote
+      };
+      configs.set(cfg.file, cfg);
+      runtime.set(cfg.file, {
+        again: false, busy: false, pushTimer: null, state: null
+      });
+    } else {
+      cfg.keys = options.keys.slice();
+      cfg.onRemote = options.onRemote || cfg.onRemote;
+    }
 
     // Google sign-in needs a hosted page, not file://
     if (location.protocol === "file:") {
-      setStatus("unavailable");
+      setStatus("unavailable", cfg);
       return;
     }
     if (CLIENT_ID.startsWith("YOUR_")) {
       console.info("Sync: add a client ID to sync.js to enable it");
-      setStatus("noClient");
+      setStatus("noClient", cfg);
       return;
     }
 
-    const gis = document.createElement("script");
-    gis.async = true;
-    gis.src = "https://accounts.google.com/gsi/client";
-    document.head.appendChild(gis);
+    if (!initialized) {
+      const gis = document.createElement("script");
+      gis.async = true;
+      gis.src = "https://accounts.google.com/gsi/client";
+      document.head.appendChild(gis);
 
-    addButton();
-    setStatus(getToken() ? "syncing" : signedOutState());
-    if (getToken()) sync();
+      addButton();
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") flushAll();
+        else if (getToken()) syncAll();
+      });
+      window.addEventListener("online", () => {
+        if (getToken()) syncAll();
+      });
+      window.addEventListener("pagehide", flushAll);
+      setInterval(() => {
+        if (document.visibilityState === "visible" && getToken()) syncAll();
+      }, POLL_EVERY);
+      initialized = true;
+    }
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
-      else if (getToken()) sync();
-    });
-    window.addEventListener("online", () => {
-      if (getToken()) sync();
-    });
-    window.addEventListener("pagehide", flush);
-    setInterval(() => {
-      if (document.visibilityState === "visible" && getToken()) sync();
-    }, POLL_EVERY);
+    setStatus(getToken() ? "syncing" : signedOutState(cfg), cfg);
+    if (getToken()) sync(cfg);
+  }
+
+  function syncAll() {
+    return Promise.all(Array.from(configs.values()).map(sync));
   }
 
   window.ToolSync = {
-    click, init, notify, signOut, sync, status: () => state
+    click, init, notify, signOut, sync: syncAll, status: () => state
   };
 
 })();

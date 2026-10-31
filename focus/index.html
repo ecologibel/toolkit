@@ -746,16 +746,9 @@
     return null;
   }
 
-  // Save the notes and mark them changed, so their next sync sends this
+  // Save changed notes; sync.js watches this key and schedules notes.json.
   function saveNotes(data) {
     store(NOTES_KEY, JSON.stringify(data));
-    try {
-      const meta = JSON.parse(read("sync-meta-notes.json"));
-      if (meta) {
-        meta.updated = Date.now();
-        store("sync-meta-notes.json", JSON.stringify(meta));
-      }
-    } catch {}
   }
 
   function lists(data) {
@@ -1616,6 +1609,11 @@
   ToolSync.init({
     file:     "to-dos.json",
     keys:     [TODO_KEY, "todo-toggle-sections"],
+    onRemote: render
+  });
+  ToolSync.init({
+    file:     "notes.json",
+    keys:     [NOTES_KEY],
     onRemote: render
   });
 })();
