@@ -326,6 +326,7 @@
       #tk-sidebar #tk-sync[data-state="synced"],
       #tk-sidebar #tk-sync[data-state="syncing"] { color: #7fdbca; }
       #tk-sidebar #tk-sync[data-state="error"] { color: #e06c75; }
+       #tk-sidebar #tk-sync[data-state="conflict"] { color: #e5c07b; }
       #tk-sidebar #tk-sync[data-state="noClient"],
       #tk-sidebar #tk-sync[data-state="unavailable"] { cursor: default; }
 
