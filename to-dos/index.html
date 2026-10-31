@@ -1009,6 +1009,7 @@
 <script src="../sync.js"></script>
 <script src="../sidebar.js"></script>
 <script src="../dates.js"></script>
+<script src="../recovery.js"></script>
 <script>
   const STORAGE_KEY = "todo-data";
   const DATES = ToolkitDates;
@@ -1143,6 +1144,9 @@
       if (raw !== null && !valid) {
         ToolkitSidebar.preserveRecovery(STORAGE_KEY, raw);
         data = null;
+      } else if (valid) {
+        data = ToolkitRecovery.recoverTodos(data, raw, recoveryRaw =>
+          ToolkitSidebar.preserveRecovery(STORAGE_KEY, recoveryRaw));
       }
       data = data || {
         simple: [], weekly: {},
