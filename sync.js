@@ -25,6 +25,7 @@
 
   const LABELS = {
     error:     "Sync failed, retry",
+    conflict:  "Resolve sync conflict",
     pending:   "Saving…",
     reconnect: "Reconnect sync",
     signedOut: "Sign in to sync",
@@ -35,6 +36,7 @@
   // Hover labels for the sidebar's sync icon
   const SIDEBAR = {
     error:       "sync: failed, click to retry",
+    conflict:    "sync: conflict, click to resolve",
     noClient:    "sync: no client ID in sync.js",
     pending:     "sync: saving…",
     reconnect:   "sync: signed out, click to reconnect",
@@ -55,6 +57,10 @@
 
   function metaKey() {
     return "sync-meta-" + cfg.file;
+  }
+
+  function conflictKey() {
+    return "sync-conflict-" + cfg.file;
   }
 
   function loadMeta() {
@@ -110,6 +116,29 @@
     }
   }
 
+  function preserveConflict(remote) {
+    if (!backupRemote(remote)) return false;
+    try {
+      nativeSet.call(localStorage, conflictKey(), JSON.stringify({
+        detected: Date.now(), updated: remote.updated
+      }));
+      return true;
+    } catch (err) {
+      console.warn("Sync: couldn't record the conflict", err);
+      return false;
+    }
+  }
+
+  function savedConflictRemote() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(
+        "sync-backup-" + cfg.file + "-remote"));
+      return validRemote(saved) ? saved : null;
+    } catch {
+      return null;
+    }
+  }
+
   // Keep metadata edits made while an upload is in flight.
   function finishUpload(m, data, uploadedAt) {
     const latest = loadMeta();
@@ -139,7 +168,7 @@
 
   function markChanged() {
     const m = loadMeta();
-    m.updated = Date.now();
+    m.updated = Math.max(Date.now(), m.updated + 1);
     saveMeta(m);
     if (!getToken()) return;
     setStatus("pending");
@@ -317,6 +346,10 @@
     pushTimer = null;
     setStatus("syncing");
     try {
+      if (localStorage.getItem(conflictKey())) {
+        setStatus("conflict");
+        return;
+      }
       const m = loadMeta();
       const startUpdated = m.updated;
       const remote = await readRemote(m);
@@ -324,6 +357,14 @@
       // Skip this round if the tool saved while the request ran
       if (loadMeta().updated !== startUpdated) {
         again = true;
+      } else if (m.synced && m.updated > m.synced
+          && remote && remote.updated > m.synced
+          && !sameData(collect(), remote.data)) {
+        // Both this device and Drive changed since the last shared version.
+        // Keep this device's data active and save Drive's copy for resolution.
+        if (!preserveConflict(remote)) throw new Error("conflict backup failed");
+        setStatus("conflict");
+        return;
       } else if (!remote) {
         if (Object.keys(collect()).length) {
           m.updated = m.updated || Date.now();
@@ -373,6 +414,10 @@
   // Send a pending save before the page is hidden or closed
   function flush() {
     if (!pushTimer || !getToken() || busy) return;
+    if (localStorage.getItem(conflictKey())) {
+      setStatus("conflict");
+      return;
+    }
     clearTimeout(pushTimer);
     pushTimer = null;
     const m = loadMeta();
@@ -413,8 +458,61 @@
   function click(e) {
     if (state === "noClient" || state === "unavailable") return;
     if (e && e.altKey) signOut();
+    else if (state === "conflict") resolveConflict();
     else if (getToken()) sync();
     else connect();
+  }
+
+  async function resolveConflict() {
+    if (busy) return;
+    const answer = window.prompt(
+      "Sync conflict: type LOCAL to keep this device's copy, or DRIVE to use "
+      + "Drive's copy. Cancel to leave both copies unchanged."
+    );
+    if (answer === null) return;
+    const choice = answer.trim().toUpperCase();
+    if (choice !== "LOCAL" && choice !== "DRIVE") {
+      window.alert("Type LOCAL or DRIVE. The conflict is still saved.");
+      return;
+    }
+
+    const savedRemote = savedConflictRemote();
+    if (!savedRemote) {
+      setStatus("error");
+      return;
+    }
+
+    busy = true;
+    setStatus("syncing");
+    try {
+      const m = loadMeta();
+      const latestRemote = await readRemote(m);
+      if (!latestRemote) throw new Error("conflict remote missing");
+
+      if (choice === "LOCAL") {
+        // Keep a recovery copy of the latest Drive version before replacing it.
+        if (!backupRemote(latestRemote)) throw new Error("backup failed");
+        m.synced = latestRemote.updated;
+        m.updated = Math.max(Date.now(), latestRemote.updated + 1);
+        saveMeta(m);
+        nativeRemove.call(localStorage, conflictKey());
+        again = true;
+      } else {
+        // applyRemote saves this device's current data before replacing it.
+        applyRemote(m, latestRemote);
+        nativeRemove.call(localStorage, conflictKey());
+        setStatus("synced");
+      }
+    } catch (err) {
+      console.warn("Sync conflict resolution:", err);
+      setStatus(err.message === "auth" ? signedOutState() : "error");
+    } finally {
+      busy = false;
+      if (again) {
+        again = false;
+        sync();
+      }
+    }
   }
 
   function setStatus(next) {
