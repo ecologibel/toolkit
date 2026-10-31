@@ -710,7 +710,16 @@
 
   // ---- Today's to-dos ----
 
+  let dateMigrationWarned = false;
+
   function loadTodos() {
+    const dateKeysReady = D.migrateStoredTodoKeys();
+    if (!dateKeysReady && !dateMigrationWarned) {
+      dateMigrationWarned = true;
+      ToolkitSidebar.toast(
+        "Date update paused; free browser storage and reload to retry."
+      );
+    }
     const raw = read(TODO_KEY);
     try {
       const data = JSON.parse(raw);
@@ -723,11 +732,13 @@
       if (valid) {
         if (!data.weekly) data.weekly = {};
         if (!data.toggleData) data.toggleData = {};
+        if (dateKeysReady) data.dateKeyVersion = 1;
         return data;
       }
     } catch {}
     if (raw !== null) ToolkitSidebar.preserveRecovery(TODO_KEY, raw);
-    return { simple: [], toggleData: {}, weekly: {} };
+    return { simple: [], toggleData: {}, weekly: {},
+      ...(dateKeysReady ? { dateKeyVersion: 1 } : {}) };
   }
 
   function loadNotes() {
