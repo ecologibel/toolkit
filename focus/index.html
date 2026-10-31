@@ -689,7 +689,17 @@
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  const NOTE_COLOURS = ["grey", "red", "orange", "yellow", "green",
+    "blue", "purple", "pink"];
+
+  function safeHref(href) {
+    const h = String(href || "").trim();
+    if (/^(https?:|mailto:)/i.test(h)) return h;
+    if (/^www\./i.test(h)) return "https://" + h;
+    return "";
   }
 
   function htmlText(html) {
@@ -1159,7 +1169,7 @@
     focalKind = loc.kind;
     focalEl.contentEditable = loc.kind === "todo" ? "plaintext-only" : "true";
     focalEl.innerHTML = loc.kind === "todo" ? D.highlight(loc.text)
-      : D.decorate(loc.item.html);
+      : D.decorate(clean(loc.item.html));
   }
 
   function selRange() {
@@ -1212,17 +1222,17 @@
         if (n.nodeType === 3) {
           out += esc(n.data.replace(/\u200b/g, ""));
         } else if (n.nodeType === 1) {
-          if (n.tagName === "BR") return;
+          if (n.tagName === "BR") { out += "<br>"; return; }
           const inner = walk(n);
           if (!inner) return;
           if (n.tagName === "A") {
-            const href = n.getAttribute("href") || "";
-            out += /^(https?:|mailto:)/i.test(href)
+            const href = safeHref(n.getAttribute("href"));
+            out += href
               ? '<a href="' + esc(href) + '">' + inner + "</a>" : inner;
             return;
           }
           const tag = TAGS[n.tagName];
-          const col = tag === "mark" && /^[a-z]+$/.test(n.dataset.c || "")
+          const col = tag === "mark" && NOTE_COLOURS.includes(n.dataset.c)
             ? ' data-c="' + n.dataset.c + '"' : "";
           out += tag ? "<" + tag + col + ">" + inner + "</" + tag + ">"
             : inner;
